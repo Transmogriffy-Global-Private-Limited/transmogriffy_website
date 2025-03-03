@@ -18,6 +18,8 @@ from Users.Data_Schemas import (
     PasswordResetConfirm,
     TwoFARequest,
     OTPRequest,
+    AddressCreate,
+    AddressUpdate,
 )
 from Users.Methods import (
     create_user,
@@ -35,6 +37,15 @@ from Users.Methods import (
     get_user_data,
     upload_profile_picture,
     get_profile_picture,
+    create_address,
+    update_address,
+    update_address_type,
+    get_all_addresses,
+    delete_address,
+    get_address_by_type,
+    set_default_address,
+    get_default_address,
+    get_other_address_by_name,
 )
 
 User_Router = APIRouter()
@@ -244,3 +255,124 @@ async def get_profile_picture_endpoint(payload=Depends(verify_jwt)):
         )
 
     return {"profile_picture": profile_picture_response["profile_picture"]}
+
+
+@User_Router.post("/address", status_code=status.HTTP_201_CREATED)
+async def create_address_endpoint(
+    payload=Depends(verify_jwt), address_data: AddressCreate = None
+):
+    """
+    Creates a new address for the user.
+    """
+    if not address_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Address data is required.",
+        )
+    return await create_address(payload, address_data.model_dump())
+
+
+@User_Router.patch("/address/{address_type}", status_code=status.HTTP_200_OK)
+async def update_address_endpoint(
+    address_type: AddressTypeEnum,
+    custom_name: Optional[str] = None,
+    payload=Depends(verify_jwt),
+    update_data: AddressUpdate = None,
+):
+    """
+    Updates an address based on type (Home, Work, Other). If 'Other', a custom name is required.
+    """
+    if not update_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Update data is required.",
+        )
+    return await update_address(
+        payload,
+        address_type,
+        custom_name,
+        update_data.model_dump(exclude_unset=True),
+    )
+
+
+@User_Router.patch(
+    "/address/{address_type}/update-type", status_code=status.HTTP_200_OK
+)
+async def update_address_type_endpoint(
+    address_type: AddressTypeEnum,
+    new_type: AddressTypeEnum,
+    custom_name: Optional[str] = None,
+    payload=Depends(verify_jwt),
+):
+    """
+    Updates the type of an address.
+    """
+    return await update_address_type(
+        payload, address_type, custom_name, new_type
+    )
+
+
+@User_Router.get("/address", status_code=status.HTTP_200_OK)
+async def get_all_addresses_endpoint(payload=Depends(verify_jwt)):
+    """
+    Retrieves all addresses of the user.
+    """
+    return await get_all_addresses(payload)
+
+
+@User_Router.delete(
+    "/address/{address_type}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_address_endpoint(
+    address_type: AddressTypeEnum,
+    custom_name: Optional[str] = None,
+    payload=Depends(verify_jwt),
+):
+    """
+    Deletes an address based on type.
+    """
+    return await delete_address(payload, address_type, custom_name)
+
+
+@User_Router.get("/address/{address_type}", status_code=status.HTTP_200_OK)
+async def get_address_by_type_endpoint(
+    address_type: AddressTypeEnum, payload=Depends(verify_jwt)
+):
+    """
+    Retrieves all addresses of a given type.
+    """
+    return await get_address_by_type(payload, address_type)
+
+
+@User_Router.patch(
+    "/address/{address_type}/set-default", status_code=status.HTTP_200_OK
+)
+async def set_default_address_endpoint(
+    address_type: AddressTypeEnum,
+    custom_name: Optional[str] = None,
+    payload=Depends(verify_jwt),
+):
+    """
+    Sets an address as the default.
+    """
+    return await set_default_address(payload, address_type, custom_name)
+
+
+@User_Router.get("/address/default", status_code=status.HTTP_200_OK)
+async def get_default_address_endpoint(payload=Depends(verify_jwt)):
+    """
+    Retrieves the default address for the user.
+    """
+    return await get_default_address(payload)
+
+
+@User_Router.get(
+    "/address/other/{custom_name}", status_code=status.HTTP_200_OK
+)
+async def get_other_address_by_name_endpoint(
+    custom_name: str, payload=Depends(verify_jwt)
+):
+    """
+    Retrieves 'Other' type addresses by their custom name.
+    """
+    return await get_other_address_by_name(payload, custom_name)

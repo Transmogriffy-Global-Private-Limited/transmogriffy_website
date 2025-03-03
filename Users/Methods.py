@@ -550,3 +550,181 @@ async def get_profile_picture(payload: dict) -> dict:
         )
 
     return {"profile_picture": profile_picture_base64}
+
+
+async def create_address(payload: dict, address_data: Dict) -> Dict:
+    """
+    Creates a new address for the logged-in user.
+    """
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not authenticated.",
+        )
+
+    user = await User.get_or_none(id=user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    # Ensure only one default address exists
+    if address_data.get("is_default"):
+        await Address.filter(user=user).update(is_default=False)
+
+    # Create new address
+    try:
+        new_address = await Address.create(user=user, **address_data)
+        return {
+            "message": "Address successfully added",
+            "address_id": str(new_address.id),
+        }
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Error adding address. Please try again.",
+        )
+
+
+async def update_address(
+    payload: dict, address_id: str, update_data: Dict
+) -> Dict:
+    """
+    Updates an existing address of the logged-in user.
+    """
+    user_id = payload.get("user_id")
+
+    address = await Address.get_or_none(id=address_id, user_id=user_id)
+    if not address:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Address not found.",
+        )
+
+    # Ensure only one default address exists
+    if update_data.get("is_default"):
+        await Address.filter(user_id=user_id).update(is_default=False)
+
+    for field, value in update_data.items():
+        setattr(address, field, value)
+
+    await address.save()
+    return {"message": "Address updated successfully"}
+
+
+async def update_address_type(
+    payload: dict,
+    address_id: str,
+    new_type: AddressTypeEnum,
+    custom_name: str = None,
+) -> Dict:
+    """
+    Updates the type of an address.
+    """
+    user_id = payload.get("user_id")
+
+    address = await Address.get_or_none(id=address_id, user_id=user_id)
+    if not address:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Address not found.",
+        )
+
+    address.type = new_type
+    if new_type == AddressTypeEnum.OTHER:
+        if not custom_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Custom name required for 'Other' type address.",
+            )
+        address.custom_type_name = custom_name
+    else:
+        address.custom_type_name = None  # Reset custom name if type changes
+
+    await address.save()
+    return {"message": "Address type updated successfully"}
+
+
+async def get_all_addresses(payload: dict) -> List[Dict]:
+    """
+    Retrieves all addresses associated with the logged-in user.
+    """
+    user_id = payload.get("user_id")
+
+    addresses = await Address.filter(user_id=user_id).all()
+    if not addresses:
+        return {"message": "No addresses found."}
+
+    return [address.__dict__ for address in addresses]
+
+
+async def delete_address(payload: dict, address_id: str) -> Dict:
+    """
+    Deletes an address.
+    """
+    user_id = payload.get("user_id")
+
+    address = await Address.get_or_none(id=address_id, user_id=user_id)
+    if not address:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Address not found.",
+        )
+
+    await address.delete()
+    return {"message": "Address deleted successfully"}
+
+
+async def get_address_by_type(
+    payload: dict, address_type: AddressTypeEnum
+) -> List[Dict]:
+    """
+    Retrieves all addresses of a particular type.
+    """
+    user_id = payload.get("user_id")
+
+    addresses = await Address.filter(user_id=user_id, type=address_type).all()
+    if not addresses:
+        return {"message": f"No {address_type.value} addresses found."}
+
+    return [address.__dict__ for address in addresses]
+
+
+async def set_default_address(payload: dict, address_id: str) -> Dict:
+    """
+    Sets an address as the default for the user.
+    """
+    user_id = payload.get("user_id")
+
+    address = await Address.get_or_none(id=address_id, user_id=user_id)
+    if not address:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Address not found.",
+        )
+
+    # Reset all default addresses
+    await Address.filter(user_id=user_id).update(is_default=False)
+
+    # Set the new default address
+    address.is_default = True
+    await address.save()
+
+    return {"message": "Default address set successfully"}
+
+
+async def get_default_address(payload: dict) -> Dict:
+    """
+    Retrieves the default address for the user.
+    """
+    user_id = payload.get("user_id")
+
+    default_address = await Address.get_or_none(
+        user_id=user_id, is_default=True
+    )
+    if not default_address:
+        return {"message": "No default address set."}
+
+    return default_address.__dict__
