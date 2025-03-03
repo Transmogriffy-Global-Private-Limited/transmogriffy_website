@@ -2,6 +2,7 @@ from Database_and_ORM.Database_Models import (
     User,
     Blacklisted_Tokens,
     OTP,
+    Address,
 )
 from Users.Data_Schemas import UserCreate, OTPTypeEnum, AddressTypeEnum
 from Comms.Methods import send_email, get_email_content
