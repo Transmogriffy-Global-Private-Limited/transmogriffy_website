@@ -44,6 +44,7 @@ class OTP(Model):
     class Meta:
         table = "otp"
 
+
 class APIActivityLog(Model):
     """
     Model to track API activity details such as IP address, request, response,

@@ -36,10 +36,8 @@ from Admin.Methods import (
     upload_admin_profile_picture,
     get_admin_profile_picture,
     verify_email_otp,
-    view_user_data,
-    get_training_status_from_file,
 )
-from Machine_Learning.Methods import retrain_model
+
 from Database_and_ORM.Database_Models import Admin
 
 Admin_Router = APIRouter()

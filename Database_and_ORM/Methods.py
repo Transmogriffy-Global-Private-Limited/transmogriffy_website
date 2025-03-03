@@ -3,6 +3,7 @@ from tortoise.exceptions import DBConnectionError, ValidationError
 from decouple import config
 import re
 
+
 async def init_db():
     try:
         await Tortoise.init(

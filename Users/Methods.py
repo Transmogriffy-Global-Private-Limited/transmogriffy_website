@@ -173,9 +173,7 @@ async def delete_user(payload: dict, authorization: str):
     token = await get_token_from_authorization_header_value(authorization)
     blacklisted = await Blacklisted_Tokens.create(Blacklisted_Tokens=token)
     if blacklisted:
-        return {
-            "message": "User deleted successfully and token blacklisted"
-        }
+        return {"message": "User deleted successfully and token blacklisted"}
     else:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

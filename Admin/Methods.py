@@ -24,6 +24,7 @@ from Utility_Methods.Utility_Methods import (
 )
 from Admin.Data_Schemas import OTPTypeEnum, RoleEnum, AdminCreate
 
+
 async def create_admin(admin_data: AdminCreate) -> Union[Admin, dict]:
     """
     Creates a new admin in the database with hashed password.
@@ -125,9 +126,7 @@ async def update_admin(update_data: dict, payload: dict):
 
     if changes:
         await admin.save()
-        return {
-            "changes": changes
-        }
+        return {"changes": changes}
     else:
         return {"message": "No changes made."}
 
@@ -673,34 +672,3 @@ async def verify_email_otp(payload: dict, otp_code: str) -> bool:
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Invalid or expired OTP for email verification",
     )
-
-
-async def get_training_status_from_file(payload: dict):
-    """
-    Fetch the training status from Electricity_Model_Update_Status.json.
-    """
-    admin_id = payload.get("user_id")
-    admin = await Admin.get_or_none(id=admin_id)
-    if not admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins are authorized to view model training status.",
-        )
-    # Path to the status JSON file
-    model_dir = config("ELECTRICITY_CONSUMPTION_MODEL_PATH")
-    status_json_path = os.path.join(
-        model_dir, "Electricity_Model_Update_Status.json"
-    )
-
-    # Check if the status file exists
-    if not os.path.exists(status_json_path):
-        raise FileNotFoundError(
-            "Training status file not found. Model might not be trained yet."
-        )
-
-    # Load and return the status file content
-    try:
-        with open(status_json_path, "r") as status_file:
-            return json.load(status_file)
-    except Exception as e:
-        raise Exception(f"Error reading training status file: {str(e)}")
