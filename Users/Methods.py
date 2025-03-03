@@ -730,6 +730,7 @@ async def get_default_address(payload: dict) -> Dict:
 
     return default_address.__dict__
 
+
 async def get_other_address_by_name(payload: dict, custom_name: str):
     """
     Retrieves 'Other' type addresses for the logged-in user by their custom name.
@@ -743,11 +744,14 @@ async def get_other_address_by_name(payload: dict, custom_name: str):
         )
 
     addresses = await Address.filter(
-        user_id=user_id, type=AddressTypeEnum.OTHER, custom_type_name=custom_name
+        user_id=user_id,
+        type=AddressTypeEnum.OTHER,
+        custom_type_name=custom_name,
     ).all()
 
     if not addresses:
-        return {"message": f"No addresses found with the name '{custom_name}'."}
+        return {
+            "message": f"No addresses found with the name '{custom_name}'."
+        }
 
     return [address.__dict__ for address in addresses]
-

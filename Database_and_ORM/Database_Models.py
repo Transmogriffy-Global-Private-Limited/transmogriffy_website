@@ -56,7 +56,7 @@ class Address(Model):
 
 
 class Blacklisted_Tokens(Model):
-    Blacklisted_Tokens = fields.CharField(pk=True, max_length=2048)
+    Blacklisted_Tokens = fields.CharField(pk=True, max_length=512)
 
     class Meta:
         table = "Blacklisted_Tokens"

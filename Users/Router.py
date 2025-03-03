@@ -6,7 +6,7 @@ from fastapi import (
     Header,
     Depends,
     File,
-    UploadFile
+    UploadFile,
 )
 from Utility_Methods.Utility_Methods import verify_jwt
 from Users.Data_Schemas import (
@@ -20,7 +20,7 @@ from Users.Data_Schemas import (
     OTPRequest,
     AddressCreate,
     AddressUpdate,
-    AddressTypeEnum
+    AddressTypeEnum,
 )
 from Users.Methods import (
     create_user,
