@@ -3,7 +3,7 @@ from Database_and_ORM.Database_Models import (
     Blacklisted_Tokens,
     OTP,
 )
-from Users.Data_Schemas import UserCreate, OTPTypeEnum
+from Users.Data_Schemas import UserCreate, OTPTypeEnum, AddressTypeEnum
 from Comms.Methods import send_email, get_email_content
 from tortoise.exceptions import IntegrityError, DoesNotExist
 from typing import Union
@@ -647,7 +647,7 @@ async def update_address_type(
     return {"message": "Address type updated successfully"}
 
 
-async def get_all_addresses(payload: dict) -> List[Dict]:
+async def get_all_addresses(payload: dict) -> list[Dict]:
     """
     Retrieves all addresses associated with the logged-in user.
     """
@@ -679,7 +679,7 @@ async def delete_address(payload: dict, address_id: str) -> Dict:
 
 async def get_address_by_type(
     payload: dict, address_type: AddressTypeEnum
-) -> List[Dict]:
+) -> list[Dict]:
     """
     Retrieves all addresses of a particular type.
     """
@@ -728,3 +728,25 @@ async def get_default_address(payload: dict) -> Dict:
         return {"message": "No default address set."}
 
     return default_address.__dict__
+
+async def get_other_address_by_name(payload: dict, custom_name: str):
+    """
+    Retrieves 'Other' type addresses for the logged-in user by their custom name.
+    """
+    user_id = payload.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not authenticated.",
+        )
+
+    addresses = await Address.filter(
+        user_id=user_id, type=AddressTypeEnum.OTHER, custom_type_name=custom_name
+    ).all()
+
+    if not addresses:
+        return {"message": f"No addresses found with the name '{custom_name}'."}
+
+    return [address.__dict__ for address in addresses]
+
