@@ -34,8 +34,6 @@ async def create_user(user_data: UserCreate) -> Union[User, dict]:
         name=user_data.name,
         email=user_data.email,  # Defaults to False if not passed
         password=hashed_password,
-        address=user_data.address,
-        pin_code=user_data.pin_code,
         phone_number=user_data.phone_number,  # Defaults to False if not passed
     )
 

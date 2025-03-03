@@ -9,10 +9,7 @@ class User(Model):
     name = fields.CharField(max_length=100)
     email = fields.CharField(max_length=100, unique=True)
     email_verified = fields.BooleanField(default=False)
-    address = fields.CharField(max_length=500)
-    pin_code = fields.BigIntField(max_length=6)
-    phone_number = fields.BigIntField
-    phone_number_verified = fields.BooleanField(default=False)
+    phone_number = fields.BigIntField(null=True)
     password = fields.CharField(max_length=128)
     two_fa_status = fields.BooleanField(default=False)
     role = fields.CharEnumField(RoleEnum, default=RoleEnum.user)
