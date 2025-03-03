@@ -19,7 +19,7 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
-    phone_number: int
+    phone_number: Optional[int] = None
 
 
 class UserUpdate(BaseModel):
