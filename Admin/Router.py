@@ -236,39 +236,3 @@ async def generate_otp_endpoint(otp_request: OTPRequest):
     Generates and sends an OTP for the specified purpose.
     """
     return await generate_and_send_otp(otp_request.email, otp_request.purpose)
-
-@Admin_Router.get("/retrain/status")
-async def get_training_status_api(payload: dict = Depends(verify_jwt)):
-    """
-    API to fetch the current training status of the electricity consumption model.
-    """
-    try:
-        # Call the method to fetch training status
-        status = await get_training_status_from_file(payload)
-        return status
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-
-@Admin_Router.post("/retrain")
-async def retrain_model_api(payload: dict = Depends(verify_jwt)):
-    """
-    API to retrain the electricity consumption prediction model.
-    """
-    admin_id = payload.get("user_id")
-    admin = await Admin.get_or_none(id=admin_id)
-    if not admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins are authorized to view model training status.",
-        )
-    try:
-        result = await retrain_model()
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error during model retraining: {str(e)}",
-        )
