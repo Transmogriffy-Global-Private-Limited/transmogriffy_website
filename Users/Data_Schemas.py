@@ -19,16 +19,12 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
-    address: str
-    pin_code: int
     phone_number: int
 
 
 class UserUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
     email: Optional[EmailStr] = None
-    address: Optional[str] = None
-    pin_code: Optional[int] = None
     phone_number: Optional[int] = None
 
 
