@@ -55,3 +55,8 @@ class PasswordResetConfirm(BaseModel):
     email: EmailStr
     new_password: str
     otp_code: str
+
+class AddressTypeEnum(str, Enum):
+    Home = "Home"
+    Work = "Work"
+    Other = "Other"

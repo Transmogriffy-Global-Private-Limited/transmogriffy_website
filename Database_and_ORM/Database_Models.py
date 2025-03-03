@@ -90,9 +90,6 @@ class Admin(Model):
         description="Role of the admin",
     )
     name = fields.CharField(max_length=255, description="Name of the admin")
-    number_of_users = fields.IntField(
-        default=0, description="Automatically updates"
-    )
     email = fields.CharField(max_length=100, unique=True)
     email_verified = fields.BooleanField(default=False)
     password = fields.CharField(
