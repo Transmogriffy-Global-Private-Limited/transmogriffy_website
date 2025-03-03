@@ -1,6 +1,6 @@
 from tortoise import fields
 from tortoise.models import Model
-from Users.Data_Schemas import RoleEnum, OTPTypeEnum
+from Users.Data_Schemas import RoleEnum, OTPTypeEnum, AddressTypeEnum
 from Questionnaire.Data_Schemas import MonthEnum, ClimateEnum
 
 
@@ -20,6 +20,26 @@ class User(Model):
     class Meta:
         table = "User"
 
+
+class Address(Model):
+    id = fields.UUIDField(pk=True)
+    user = fields.ForeignKeyField(
+        "models.User", related_name="addresses", on_delete=fields.CASCADE
+    )
+    type = fields.CharEnumField(AddressTypeEnum, description="Type of Address (Home, Work, Other)")
+    custom_type_name = fields.CharField(max_length=100, null=True, description="Custom name if type is 'Other'")
+    house_building = fields.CharField(max_length=255, description="House/Building Number or Name")
+    locality_street = fields.CharField(max_length=255, description="Locality or Street Name")
+    landmark = fields.CharField(max_length=255, null=True, description="Landmark")
+    city = fields.CharField(max_length=100, description="City Name")
+    po_ps = fields.CharField(max_length=100, description="Post Office or Police Station")
+    district = fields.CharField(max_length=100, description="District Name")
+    state = fields.CharField(max_length=100, description="State Name")
+    country = fields.CharField(max_length=100, description="Country Name")
+    is_default = fields.BooleanField(default=False, description="Is this the default address?")
+    
+    class Meta:
+        table = "address"
 
 class Blacklisted_Tokens(Model):
     Blacklisted_Tokens = fields.CharField(pk=True, max_length=2048)
