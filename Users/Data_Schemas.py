@@ -89,6 +89,7 @@ class AddressCreate(BaseModel):
     )
     district: str = Field(..., max_length=100, description="District Name")
     state: str = Field(..., max_length=100, description="State Name")
+    pin: int = Field(..., max_digits=6, description="PIN Code")
     country: str = Field(..., max_length=100, description="Country Name")
     is_default: Optional[bool] = Field(
         False, description="Is this the default address?"
@@ -119,6 +120,7 @@ class AddressUpdate(BaseModel):
     state: Optional[str] = Field(
         None, max_length=100, description="State Name"
     )
+    pin: Optional[int] = Field(None, max_digits=6, description="PIN Code")
     country: Optional[str] = Field(
         None, max_length=100, description="Country Name"
     )

@@ -46,6 +46,7 @@ class Address(Model):
     )
     district = fields.CharField(max_length=100, description="District Name")
     state = fields.CharField(max_length=100, description="State Name")
+    pin = fields.IntField(max_length=6, description="PIN Code")
     country = fields.CharField(max_length=100, description="Country Name")
     is_default = fields.BooleanField(
         default=True, description="Is this the default address?"
