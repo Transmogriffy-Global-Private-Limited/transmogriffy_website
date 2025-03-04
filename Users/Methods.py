@@ -7,7 +7,7 @@ from Database_and_ORM.Database_Models import (
 from Users.Data_Schemas import UserCreate, OTPTypeEnum, AddressTypeEnum
 from Comms.Methods import send_email, get_email_content
 from tortoise.exceptions import IntegrityError, DoesNotExist
-from typing import Union
+from typing import Union, Optional
 from datetime import datetime, timedelta, timezone
 from decouple import config
 from fastapi import HTTPException, status, UploadFile
@@ -590,14 +590,29 @@ async def create_address(payload: dict, address_data: Dict) -> Dict:
 
 
 async def update_address(
-    payload: dict, address_id: str, update_data: Dict
+    payload: dict,
+    address_type: AddressTypeEnum,
+    custom_name: Optional[str],
+    update_data: Dict,
 ) -> Dict:
     """
-    Updates an existing address of the logged-in user.
+    Updates an existing address of the logged-in user based on type.
     """
     user_id = payload.get("user_id")
 
-    address = await Address.get_or_none(id=address_id, user_id=user_id)
+    # Fetch address based on type and (if applicable) custom name
+    filters = {"user_id": user_id, "type": address_type}
+    if address_type == AddressTypeEnum.OTHER:
+        if not custom_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Custom name is required for 'Other' address type.",
+            )
+        filters["custom_type_name"] = (
+            custom_name  # Match the exact 'Other' name
+        )
+
+    address = await Address.get_or_none(**filters)
     if not address:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -617,16 +632,26 @@ async def update_address(
 
 async def update_address_type(
     payload: dict,
-    address_id: str,
+    address_type: AddressTypeEnum,
+    custom_name: Optional[str],
     new_type: AddressTypeEnum,
-    custom_name: str = None,
 ) -> Dict:
     """
-    Updates the type of an address.
+    Updates the type of an address based on type and (if needed) custom name.
     """
     user_id = payload.get("user_id")
 
-    address = await Address.get_or_none(id=address_id, user_id=user_id)
+    # Fetch address based on type and (if applicable) custom name
+    filters = {"user_id": user_id, "type": address_type}
+    if address_type == AddressTypeEnum.OTHER:
+        if not custom_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Custom name is required for 'Other' address type.",
+            )
+        filters["custom_type_name"] = custom_name
+
+    address = await Address.get_or_none(**filters)
     if not address:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -634,13 +659,14 @@ async def update_address_type(
         )
 
     address.type = new_type
+
     if new_type == AddressTypeEnum.OTHER:
         if not custom_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Custom name required for 'Other' type address.",
             )
-        address.custom_type_name = custom_name
+        address.custom_type_name = custom_name  # Preserve the custom name
     else:
         address.custom_type_name = None  # Reset custom name if type changes
 
@@ -661,13 +687,27 @@ async def get_all_addresses(payload: dict) -> list[Dict]:
     return [address.__dict__ for address in addresses]
 
 
-async def delete_address(payload: dict, address_id: str) -> Dict:
+async def delete_address(
+    payload: dict, address_type: AddressTypeEnum, custom_name: Optional[str]
+) -> Dict:
     """
-    Deletes an address.
+    Deletes an address based on type and (if needed) custom name.
     """
     user_id = payload.get("user_id")
 
-    address = await Address.get_or_none(id=address_id, user_id=user_id)
+    # Fetch address based on type and (if applicable) custom name
+    filters = {"user_id": user_id, "type": address_type}
+    if address_type == AddressTypeEnum.OTHER:
+        if not custom_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Custom name is required for 'Other' address type.",
+            )
+        filters["custom_type_name"] = (
+            custom_name  # Ensure correct 'Other' address
+        )
+
+    address = await Address.get_or_none(**filters)
     if not address:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -693,20 +733,34 @@ async def get_address_by_type(
     return [address.__dict__ for address in addresses]
 
 
-async def set_default_address(payload: dict, address_id: str) -> Dict:
+async def set_default_address(
+    payload: dict, address_type: AddressTypeEnum, custom_name: Optional[str]
+) -> Dict:
     """
-    Sets an address as the default for the user.
+    Sets an address as the default for the user based on type and (if needed) custom name.
     """
     user_id = payload.get("user_id")
 
-    address = await Address.get_or_none(id=address_id, user_id=user_id)
+    # Fetch address based on type and (if applicable) custom name
+    filters = {"user_id": user_id, "type": address_type}
+    if address_type == AddressTypeEnum.OTHER:
+        if not custom_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Custom name is required for 'Other' address type.",
+            )
+        filters["custom_type_name"] = (
+            custom_name  # Ensure correct 'Other' address
+        )
+
+    address = await Address.get_or_none(**filters)
     if not address:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Address not found.",
         )
 
-    # Reset all default addresses
+    # Reset all default addresses for this user
     await Address.filter(user_id=user_id).update(is_default=False)
 
     # Set the new default address
