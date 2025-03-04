@@ -602,7 +602,7 @@ async def update_address(
 
     # Fetch address based on type and (if applicable) custom name
     filters = {"user_id": user_id, "type": address_type}
-    if address_type == AddressTypeEnum.OTHER:
+    if address_type == AddressTypeEnum.Other:
         if not custom_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -643,7 +643,7 @@ async def update_address_type(
 
     # Fetch address based on type and (if applicable) custom name
     filters = {"user_id": user_id, "type": address_type}
-    if address_type == AddressTypeEnum.OTHER:
+    if address_type == AddressTypeEnum.Other:
         if not custom_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -660,7 +660,7 @@ async def update_address_type(
 
     address.type = new_type
 
-    if new_type == AddressTypeEnum.OTHER:
+    if new_type == AddressTypeEnum.Other:
         if not custom_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -697,7 +697,7 @@ async def delete_address(
 
     # Fetch address based on type and (if applicable) custom name
     filters = {"user_id": user_id, "type": address_type}
-    if address_type == AddressTypeEnum.OTHER:
+    if address_type == AddressTypeEnum.Other:
         if not custom_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -743,7 +743,7 @@ async def set_default_address(
 
     # Fetch address based on type and (if applicable) custom name
     filters = {"user_id": user_id, "type": address_type}
-    if address_type == AddressTypeEnum.OTHER:
+    if address_type == AddressTypeEnum.Other:
         if not custom_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -799,7 +799,7 @@ async def get_other_address_by_name(payload: dict, custom_name: str):
 
     addresses = await Address.filter(
         user_id=user_id,
-        type=AddressTypeEnum.OTHER,
+        type=AddressTypeEnum.Other,
         custom_type_name=custom_name,
     ).all()
 
