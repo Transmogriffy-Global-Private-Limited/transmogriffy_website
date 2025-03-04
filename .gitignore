@@ -164,3 +164,6 @@ cython_debug/
 
 # Virtual Environment
 transmogriffy_website
+
+# VSCode configs
+.vscode
