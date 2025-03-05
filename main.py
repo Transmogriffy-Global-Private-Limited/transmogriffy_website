@@ -42,7 +42,7 @@ app = FastAPI(
 # Global route
 @app.get("/")
 async def root():
-    return {"message": "Welcome to the Amenity Tracking API"}
+    return {"message": "Welcome to the Transmogriffy Website Backend"}
 
 
 # Register the routers
