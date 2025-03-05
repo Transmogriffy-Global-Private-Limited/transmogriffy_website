@@ -41,8 +41,7 @@ async def create_admin(admin_data: AdminCreate) -> Union[Admin, dict]:
 
     try:
         await admin.save()
-        if count:
-            return {"message": "Account succesfully created!"}
+        return {"message": "Account succesfully created!"}
     except IntegrityError:
         return {"error": "An admin with same details already exists."}
 
