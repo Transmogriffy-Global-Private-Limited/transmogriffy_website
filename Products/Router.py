@@ -19,21 +19,21 @@ from Products.Data_Schemas import (
 )
 from typing import List
 
-ProductsRouter = APIRouter()
+Products_Router = APIRouter()
 
 # ✅ Search Engine Instances
 product_search_engine = ProductSearchEngine()
 delisted_product_search_engine = DelistedProductSearchEngine()
 
 
-@ProductsRouter.post("/add", status_code=status.HTTP_201_CREATED)
+@Products_Router.post("/add", status_code=status.HTTP_201_CREATED)
 async def add_product_endpoint(
     product_data: AddProductSchema, payload: dict = Depends(verify_jwt)
 ):
     return await add_product(payload, product_data)
 
 
-@ProductsRouter.put("/update", status_code=status.HTTP_200_OK)
+@Products_Router.put("/update", status_code=status.HTTP_200_OK)
 async def update_product_endpoint(
     product_data: UpdateProductSchema, payload: dict = Depends(verify_jwt)
 ):
@@ -41,7 +41,7 @@ async def update_product_endpoint(
     return await update_product(payload, product_data)
 
 
-@ProductsRouter.put("/toggle-listing", status_code=status.HTTP_200_OK)
+@Products_Router.put("/toggle-listing", status_code=status.HTTP_200_OK)
 async def toggle_product_listing_endpoint(
     product_data: ToggleProductListingSchema,
     payload: dict = Depends(verify_jwt),
@@ -50,12 +50,12 @@ async def toggle_product_listing_endpoint(
     return await toggle_product_listing(payload, product_data)
 
 
-@ProductsRouter.get("/{product_id}", status_code=status.HTTP_200_OK)
+@Products_Router.get("/{product_id}", status_code=status.HTTP_200_OK)
 async def get_product_endpoint(product_id: str):
     return await get_product(product_id)
 
 
-@ProductsRouter.post("/bulk-units", status_code=status.HTTP_201_CREATED)
+@Products_Router.post("/bulk-units", status_code=status.HTTP_201_CREATED)
 async def create_bulk_units_endpoint(
     unit_data: CreateBulkUnitsSchema, payload: dict = Depends(verify_jwt)
 ):
@@ -63,7 +63,7 @@ async def create_bulk_units_endpoint(
     return await create_bulk_units(payload, unit_data)
 
 
-@ProductsRouter.put("/update-unit", status_code=status.HTTP_200_OK)
+@Products_Router.put("/update-unit", status_code=status.HTTP_200_OK)
 async def update_product_unit_endpoint(
     unit_data: UpdateProductUnitSchema, payload: dict = Depends(verify_jwt)
 ):
@@ -71,7 +71,7 @@ async def update_product_unit_endpoint(
     return await update_product_unit(payload, unit_data)
 
 
-@ProductsRouter.post("/search", status_code=status.HTTP_200_OK)
+@Products_Router.post("/search", status_code=status.HTTP_200_OK)
 async def search_products_endpoint(search_data: SearchProductsSchema):
     """🔹 Searches for products (Only listed ones)."""
     return await product_search_engine.search_products(
@@ -79,7 +79,7 @@ async def search_products_endpoint(search_data: SearchProductsSchema):
     )
 
 
-@ProductsRouter.post("/admin/search-delisted", status_code=status.HTTP_200_OK)
+@Products_Router.post("/admin/search-delisted", status_code=status.HTTP_200_OK)
 async def search_delisted_products_endpoint(
     search_data: SearchProductsSchema, payload: dict = Depends(verify_jwt)
 ):
@@ -89,7 +89,7 @@ async def search_delisted_products_endpoint(
     )
 
 
-@ProductsRouter.get(
+@Products_Router.get(
     "/admin/get-delisted/{limit}", status_code=status.HTTP_200_OK
 )
 async def get_delisted_products_endpoint(
