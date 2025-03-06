@@ -184,11 +184,7 @@ class ProductInstance(Model):
         unique=True,
         description="Unique Serial Number of the Product Instance",
     )
-    status = fields.CharEnumField(
-        ProductStatusEnum,
-        default=ProductStatusEnum.available,
-        description="Current status of the Product Instance",
-    )
+
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
