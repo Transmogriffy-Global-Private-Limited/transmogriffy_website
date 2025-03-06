@@ -47,17 +47,19 @@ app = FastAPI(
 async def root():
     return {"message": "Welcome to the Transmogriffy Website Backend"}
 
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     """Serves the default favicon.ico."""
     if path.exists(config("FAVICON_PATH")):
         return FileResponse(config("FAVICON_PATH"))
 
+
 # Register the routers
 routers = [
     (User_Router, "/users", ["Users"]),
     (Admin_Router, "/admin", ["Admin"]),
-    (Products_Router, "/products", ["Products"])
+    (Products_Router, "/products", ["Products"]),
 ]
 
 for router, prefix, tags in routers:

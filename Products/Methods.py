@@ -1,5 +1,5 @@
 import uuid
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, File, UploadFile
 from tortoise.exceptions import DoesNotExist, IntegrityError
 from Database_and_ORM.Database_Models import (
     Product,
@@ -18,6 +18,10 @@ import re
 import numpy as np
 from collections import defaultdict
 from vptree import VPTree
+from typing import List
+import os
+import shutil
+from decouple import config
 
 
 async def verify_admin(payload: dict):
@@ -41,6 +45,92 @@ async def add_product(payload: dict, product_data: AddProductSchema) -> dict:
     return product_data.model_dump() | {"id": str(product.id)}
 
 
+def get_product_media_path(product_id: str) -> str:
+    """Returns the full media path for a given product."""
+    return os.path.join(config("PRODUCTS_MEDIA_PATH"), product_id)
+
+
+async def upload_product_images(
+    product_id: str,
+    payload: dict,
+    files: List[UploadFile] = File(...),
+):
+    """🔹 Uploads multiple images for a product (PATCH: replaces existing images if folder exists)."""
+    await verify_admin(payload)  # ✅ Ensure only admins can upload
+
+    # ✅ Check if product exists
+    product = await Product.get_or_none(id=product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    # ✅ Compute product media directory
+    product_path = get_product_media_path(product_id)
+
+    # ✅ If folder exists and is not empty, delete existing files
+    if (
+        os.path.exists(product_path)
+        and os.path.isdir(product_path)
+        and os.listdir(product_path)
+    ):
+        shutil.rmtree(
+            product_path
+        )  # Delete old images before uploading new ones
+
+    # ✅ Ensure new directory exists
+    os.makedirs(product_path, exist_ok=True)
+
+    saved_files = []
+    for file in files:
+        # ✅ Enforce file size limit
+        if file.size > config("MAXIMUM_FILE_SIZE"):
+            raise HTTPException(
+                status_code=413,
+                detail=f"File {file.filename} exceeds size limit ({config("MAXIMUM_FILE_SIZE")} bytes)",
+            )
+
+        # ✅ Save new file
+        file_path = os.path.join(product_path, file.filename)
+        with open(file_path, "wb") as buffer:
+            buffer.write(await file.read())
+        saved_files.append(file.filename)
+
+    return {"message": "Images uploaded successfully", "files": saved_files}
+
+
+async def remove_product_images(product_id: str, payload: dict):
+    """🔹 Removes all images for a product (Deletes the product's folder)."""
+    await verify_admin(payload)  # ✅ Ensure only admins can delete
+
+    # ✅ Ensure product exists
+    product = await Product.get_or_none(id=product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    # ✅ Compute folder path
+    product_path = get_product_media_path(product_id)
+
+    # ✅ Check if folder exists
+    if os.path.exists(product_path) and os.path.isdir(product_path):
+        shutil.rmtree(product_path)  # Deletes entire folder
+        return {"message": "All product images deleted successfully"}
+
+    raise HTTPException(
+        status_code=404, detail="No images found for this product"
+    )
+
+
+def get_product_images(product_id: str) -> list:
+    """Returns a list of image paths for a product, if any exist."""
+    product_path = os.path.join(config("PRODUCTS_MEDIA_PATH"), product_id)
+    if os.path.exists(product_path) and os.path.isdir(product_path):
+        return [
+            os.path.join(product_path, f)
+            for f in os.listdir(product_path)
+            if os.path.isfile(os.path.join(product_path, f))
+        ]
+    return []
+
+
 async def get_product(product_id: uuid) -> dict:
     """Retrieves a product by its ID, includes the number of available units, and skips delisted products."""
     try:
@@ -50,6 +140,7 @@ async def get_product(product_id: uuid) -> dict:
         available_count = await ProductInstance.filter(
             product_id=product_id, status=ProductStatusEnum.available
         ).count()
+        image_paths = get_product_images(product_id)
 
         return {
             "id": str(product.id),
@@ -58,6 +149,7 @@ async def get_product(product_id: uuid) -> dict:
             "details": product.details,
             "available_units": available_count,  # Count of available product instances
             "is_listed": product.is_listed,
+            "image_paths": image_paths,
         }
     except DoesNotExist:
         raise HTTPException(
@@ -193,6 +285,9 @@ async def get_delisted_products(payload: dict, limit: str) -> dict:
                 "model": product.model,
                 "details": product.details,
                 "is_listed": product.is_listed,
+                "image_paths": get_product_images(
+                    str(product.id)
+                ),  # ✅ Fetch image paths
             }
             for product in products
         ],

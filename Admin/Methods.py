@@ -241,7 +241,7 @@ async def request_admin_password_reset(email: str) -> dict:
             new_otp = OTP(
                 otp_code=otp_code,
                 user_id=admin.id,
-                purpose="PASSWORD_RESET",
+                purpose=OTPTypeEnum.PASSWORD_RESET,
                 expiration=datetime.now(timezone.utc)
                 + timedelta(minutes=10),  # OTP valid for 10 minutes
             )

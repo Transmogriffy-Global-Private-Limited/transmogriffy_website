@@ -1,4 +1,12 @@
-from fastapi import APIRouter, Depends, Header, status, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    Header,
+    status,
+    HTTPException,
+    File,
+    UploadFile,
+)
 from Utility_Methods.Utility_Methods import verify_jwt
 from Products.Methods import (
     add_product,
@@ -7,6 +15,8 @@ from Products.Methods import (
     create_bulk_units,
     update_product_unit,
     get_product,
+    upload_product_images,
+    remove_product_images,
 )
 from Products.Methods import ProductSearchEngine, DelistedProductSearchEngine
 from Products.Data_Schemas import (
@@ -100,3 +110,21 @@ async def get_delisted_products_endpoint(
     return await delisted_product_search_engine.search_products(
         payload, limit=limit
     )
+
+
+@Products_Router.patch("/admin/upload-images", status_code=status.HTTP_200_OK)
+async def upload_product_images_endpoint(
+    product_id: str,
+    files: List[UploadFile] = File(...),
+    payload: dict = Depends(verify_jwt),
+):
+    """🔹 Uploads images for a product (PATCH: replaces existing images if folder exists)."""
+    return await upload_product_images(product_id, payload, files)
+
+
+@Products_Router.delete("/admin/remove-images", status_code=status.HTTP_200_OK)
+async def remove_product_images_endpoint(
+    product_id: str, payload: dict = Depends(verify_jwt)
+):
+    """🔹 Removes all images for a product."""
+    return await remove_product_images(product_id, payload)
