@@ -65,22 +65,6 @@ async def get_product_endpoint(product_id: str):
     return await get_product(product_id)
 
 
-@Products_Router.post("/bulk-units", status_code=status.HTTP_201_CREATED)
-async def create_bulk_units_endpoint(
-    unit_data: CreateBulkUnitsSchema, payload: dict = Depends(verify_jwt)
-):
-    """🔹 Creates multiple product units (Admin Only)."""
-    return await create_bulk_units(payload, unit_data)
-
-
-@Products_Router.put("/update-unit", status_code=status.HTTP_200_OK)
-async def update_product_unit_endpoint(
-    unit_data: UpdateProductUnitSchema, payload: dict = Depends(verify_jwt)
-):
-    """🔹 Updates a product unit (Admin Only)."""
-    return await update_product_unit(payload, unit_data)
-
-
 @Products_Router.post("/search", status_code=status.HTTP_200_OK)
 async def search_products_endpoint(search_data: SearchProductsSchema):
     """🔹 Searches for products (Only listed ones)."""

@@ -385,7 +385,9 @@ async def generate_and_send_otp(admin_id: str, purpose: str) -> dict:
         )
 
     # Check for existing OTP for this admin and purpose
-    existing_otp = await AdminOTP.filter(admin_id=admin.id, purpose=purpose).first()
+    existing_otp = await AdminOTP.filter(
+        admin_id=admin.id, purpose=purpose
+    ).first()
 
     # Validate existing OTP or generate a new one
     if existing_otp and existing_otp.expiration > datetime.now(timezone.utc):
@@ -438,7 +440,9 @@ async def verify_2fa_and_login(email: str, otp_code: str):
     # Retrieve the OTP entry for the user and 2FA purpose
     user = await Admin.get_or_none(email=email)
     user_id = user.id
-    verified = await verify_admin_otp(user_id, otp_code, purpose=OTPTypeEnum.TWO_FA)
+    verified = await verify_admin_otp(
+        user_id, otp_code, purpose=OTPTypeEnum.TWO_FA
+    )
 
     if verified:
         # Generate JWT token
@@ -486,7 +490,9 @@ async def reset_admin_password(email: str, otp_code: str, new_password: str):
 
     # Verify OTP
     verified = await verify_admin_otp(
-        otp_code=otp_code, admin_id=admin.id, purpose=OTPTypeEnum.PASSWORD_RESET
+        otp_code=otp_code,
+        admin_id=admin.id,
+        purpose=OTPTypeEnum.PASSWORD_RESET,
     )
     if not verified:
         raise HTTPException(

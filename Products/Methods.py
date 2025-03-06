@@ -198,59 +198,6 @@ async def toggle_product_listing(
         )
 
 
-async def create_bulk_units(
-    payload: dict, unit_data: CreateBulkUnitsSchema
-) -> dict:
-    """Creates multiple product units in bulk (Admin only)."""
-    await verify_admin(payload)
-    try:
-        product = await Product.get(id=unit_data.product_id, is_listed=True)
-        units = [
-            ProductInstance(
-                id=uuid.uuid4(),
-                product=product,
-                serial_number=sn,
-                status=ProductStatusEnum.available,
-            )
-            for sn in unit_data.serial_numbers
-        ]
-        await ProductInstance.bulk_create(units)
-        return {
-            "message": f"{len(unit_data.serial_numbers)} units created successfully"
-        }
-    except DoesNotExist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product not found or is delisted",
-        )
-    except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Duplicate serial number detected",
-        )
-
-
-async def update_product_unit(
-    payload: dict, unit_data: UpdateProductUnitSchema
-) -> dict:
-    """Updates the status of a specific product unit (Admin only)."""
-    await verify_admin(payload)
-    try:
-        product_unit = await ProductInstance.get(id=unit_data.unit_id)
-        product_unit.status = unit_data.status
-        await product_unit.save()
-        return {
-            "id": str(product_unit.id),
-            "product_id": str(product_unit.product_id),
-            "status": product_unit.status.value,
-        }
-    except DoesNotExist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product unit not found",
-        )
-
-
 async def get_delisted_products(payload: dict, limit: str) -> dict:
     """Retrieves delisted products with pagination, Admin only."""
     await verify_admin(payload)  # Ensure the user is an admin

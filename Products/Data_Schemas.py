@@ -26,16 +26,6 @@ class ToggleProductListingSchema(BaseModel):
     product_id: UUID4
 
 
-class CreateBulkUnitsSchema(BaseModel):
-    product_id: UUID4
-    serial_numbers: List[str]
-
-
-class UpdateProductUnitSchema(BaseModel):
-    unit_id: UUID4
-    status: ProductStatusEnum
-
-
 class GetDelistedProductsSchema(BaseModel):
     limit: str = Field(
         ...,
