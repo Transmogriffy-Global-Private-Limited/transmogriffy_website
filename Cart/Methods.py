@@ -25,3 +25,6 @@ async def add_to_cart(payload: Dict, cart_data: CartSchema):
         return new_cart_entry
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to add to cart: {str(e)}")
+
+async def increase_quantity(payload:Dict):
+    pass
