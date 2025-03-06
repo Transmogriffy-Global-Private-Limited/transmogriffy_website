@@ -61,7 +61,7 @@ routers = [
     (User_Router, "/users", ["Users"]),
     (Admin_Router, "/admin", ["Admin"]),
     (Products_Router, "/products", ["Products"]),
-    (cart_router,"/cart",['Cart']),
+    (cart_router, "/cart", ["Cart"]),
 ]
 
 for router, prefix, tags in routers:

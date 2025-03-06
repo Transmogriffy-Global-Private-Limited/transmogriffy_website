@@ -184,22 +184,19 @@ class ProductInstance(Model):
         unique=True,
         description="Unique Serial Number of the Product Instance",
     )
-    status = fields.CharEnumField(
-        ProductStatusEnum,
-        default=ProductStatusEnum.available,
-        description="Current status of the Product Instance",
-    )
+
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
     class Meta:
         table = "product_instance"
 
+
 class Cart(Model):
     id = fields.UUIDField(pk=True)
-    userid = fields.CharField(default=None,max_length=600)
-    productid = fields.CharField(default=None,max_length=600)
-    price = fields.CharField(default=None,max_length=600)
+    userid = fields.CharField(default=None, max_length=600)
+    productid = fields.CharField(default=None, max_length=600)
+    price = fields.CharField(default=None, max_length=600)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
