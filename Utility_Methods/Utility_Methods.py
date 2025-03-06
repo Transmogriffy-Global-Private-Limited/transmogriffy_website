@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status, Header
 from Users.Data_Schemas import OTPTypeEnum
-from Database_and_ORM.Database_Models import Blacklisted_Tokens, OTP
+from Database_and_ORM.Database_Models import Blacklisted_Tokens, AdminOTP
 from decouple import config
 import jwt
 import uuid
@@ -141,13 +141,13 @@ async def create_jwt(user_id: str, expiration_duration: int) -> str:
 
 
 async def verify_otp(
-    user_id: str, otp_code: str, purpose: OTPTypeEnum
+    admin_id: str, otp_code: str, purpose: OTPTypeEnum
 ) -> bool:
     """
     Verifies an OTP for a specific user and purpose. If valid, deletes the OTP.
     """
-    otp_entry = await OTP.get_or_none(
-        user_id=user_id, otp_code=otp_code, purpose=purpose
+    otp_entry = await AdminOTP.get_or_none(
+        admin_id=admin_id, otp_code=otp_code, purpose=purpose
     )
 
     # Check OTP existence and expiration
@@ -163,13 +163,13 @@ async def verify_otp(
 
 
 async def verify_admin_otp(
-    user_id: str, otp_code: str, purpose: OTPTypeEnum
+    admin_id: str, otp_code: str, purpose: OTPTypeEnum
 ) -> bool:
     """
     Verifies an OTP for a specific user and purpose. If valid, deletes the OTP.
     """
-    otp_entry = await OTP.get_or_none(
-        user_id=user_id, otp_code=otp_code, purpose=purpose
+    otp_entry = await AdminOTP.get_or_none(
+        admin_id=admin_id, otp_code=otp_code, purpose=purpose
     )
 
     # Check OTP existence and expiration

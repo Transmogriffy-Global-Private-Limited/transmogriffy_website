@@ -5,7 +5,6 @@ from Database_and_ORM.Database_Models import (
     AdminOTP,
     User,
     Admin,
-    OTP,
     Blacklisted_Tokens,
 )
 from fastapi import HTTPException, status, UploadFile
@@ -16,7 +15,7 @@ from Comms.Methods import get_email_content, send_email
 from datetime import datetime, timezone, timedelta
 from Utility_Methods.Utility_Methods import (
     create_jwt,
-    verify_otp,
+    verify_admin_otp,
     verify_user_password,
     get_hashed_password,
     encode_path_to_base64,
@@ -439,7 +438,7 @@ async def verify_2fa_and_login(email: str, otp_code: str):
     # Retrieve the OTP entry for the user and 2FA purpose
     user = await Admin.get_or_none(email=email)
     user_id = user.id
-    verified = await verify_otp(user_id, otp_code, purpose=OTPTypeEnum.TWO_FA)
+    verified = await verify_admin_otp(user_id, otp_code, purpose=OTPTypeEnum.TWO_FA)
 
     if verified:
         # Generate JWT token
@@ -486,8 +485,8 @@ async def reset_admin_password(email: str, otp_code: str, new_password: str):
         )
 
     # Verify OTP
-    verified = await verify_otp(
-        otp_code=otp_code, user_id=admin.id, purpose="PASSWORD_RESET"
+    verified = await verify_admin_otp(
+        otp_code=otp_code, admin_id=admin.id, purpose=OTPTypeEnum.PASSWORD_RESET
     )
     if not verified:
         raise HTTPException(
@@ -661,7 +660,7 @@ async def verify_email_otp(payload: dict, otp_code: str) -> bool:
     admin_id = payload.get("user_id")
     admin = await Admin.get(id=admin_id)
 
-    if await verify_otp(
+    if await verify_admin_otp(
         otp_code, admin_id, purpose=OTPTypeEnum.MAIL_VERIFICATION
     ):
         # Update the user's email_verified status
