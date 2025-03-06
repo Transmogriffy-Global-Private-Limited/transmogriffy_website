@@ -21,8 +21,6 @@ from Products.Data_Schemas import (
     AddProductSchema,
     UpdateProductSchema,
     ToggleProductListingSchema,
-    CreateBulkUnitsSchema,
-    UpdateProductUnitSchema,
     SearchProductsSchema,
 )
 from typing import List
