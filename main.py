@@ -4,6 +4,7 @@ from Database_and_ORM.Database_Connector import init_db, close_db
 from Users.Router import User_Router
 from Admin.Router import Admin_Router
 from Products.Router import Products_Router
+from Cart.Router import cart_router
 from decouple import config
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware import Middleware
@@ -60,6 +61,7 @@ routers = [
     (User_Router, "/users", ["Users"]),
     (Admin_Router, "/admin", ["Admin"]),
     (Products_Router, "/products", ["Products"]),
+    (cart_router,"/cart",['Cart']),
 ]
 
 for router, prefix, tags in routers:
