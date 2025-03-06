@@ -1,7 +1,7 @@
 import uuid
 from fastapi import HTTPException, status
 from Database_and_ORM.Database_Models import Cart
-from .Database_Schemas import CartSchema
+from .Database_Schemas import CartSchema,ManagementQuantity
 from typing import Dict
 
 async def add_to_cart(payload: Dict, cart_data: CartSchema):
@@ -20,11 +20,12 @@ async def add_to_cart(payload: Dict, cart_data: CartSchema):
             id=uuid.uuid4(),
             userid=userid,
             productid=productid,
+            quantity = 1,
             price=price
         )
         return new_cart_entry
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to add to cart: {str(e)}")
 
-async def increase_quantity(payload:Dict):
+async def increase_quantity(payload:Dict,management_data:ManagementQuantity):
     pass
