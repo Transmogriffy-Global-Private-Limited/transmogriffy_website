@@ -223,7 +223,7 @@ async def request_admin_password_reset(email: str) -> dict:
 
     # Check for an existing OTP
     existing_otp = await AdminOTP.filter(
-        user_id=admin.id, purpose=OTPTypeEnum.PASSWORD_RESET
+        admin_id=admin.id, purpose=OTPTypeEnum.PASSWORD_RESET
     ).first()
 
     # Use existing OTP if still valid; otherwise, generate a new one
@@ -234,14 +234,14 @@ async def request_admin_password_reset(email: str) -> dict:
 
         # Invalidate any existing OTPs for password reset for this user
         await AdminOTP.filter(
-            user_id=admin.id, purpose=OTPTypeEnum.PASSWORD_RESET
+            admin_id=admin.id, purpose=OTPTypeEnum.PASSWORD_RESET
         ).delete()
 
         # Create a new OTP entry
         try:
             new_otp = AdminOTP(
                 otp_code=otp_code,
-                user_id=admin.id,
+                admin_id=admin.id,
                 purpose=OTPTypeEnum.PASSWORD_RESET,
                 expiration=datetime.now(timezone.utc)
                 + timedelta(minutes=10),  # OTP valid for 10 minutes
@@ -386,7 +386,7 @@ async def generate_and_send_otp(admin_id: str, purpose: str) -> dict:
         )
 
     # Check for existing OTP for this admin and purpose
-    existing_otp = await AdminOTP.filter(user_id=admin.id, purpose=purpose).first()
+    existing_otp = await AdminOTP.filter(admin_id=admin.id, purpose=purpose).first()
 
     # Validate existing OTP or generate a new one
     if existing_otp and existing_otp.expiration > datetime.now(timezone.utc):
@@ -394,13 +394,13 @@ async def generate_and_send_otp(admin_id: str, purpose: str) -> dict:
     else:
         otp_code = await generate_random_otp()  # Generate a new random OTP
         await AdminOTP.filter(
-            user_id=admin.id, purpose=purpose
+            admin_id=admin.id, purpose=purpose
         ).delete()  # Invalidate old OTPs
 
         # Create and save the new OTP
         try:
             new_otp = AdminOTP(
-                user_id=admin.id,
+                admin_id=admin.id,
                 purpose=purpose,
                 otp_code=otp_code,
                 expiration=datetime.now(timezone.utc)
