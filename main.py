@@ -50,9 +50,8 @@ async def root():
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     """Serves the default favicon.ico."""
-    FAVICON_PATH = config(FAVICON_PATH)
-    if path.exists(FAVICON_PATH):
-        return FileResponse(FAVICON_PATH)
+    if path.exists(config("FAVICON_PATH")):
+        return FileResponse(config("FAVICON_PATH"))
 
 # Register the routers
 routers = [
