@@ -2,6 +2,7 @@ from tortoise.transactions import atomic
 import json
 from tortoise.exceptions import IntegrityError
 from Database_and_ORM.Database_Models import (
+    AdminOTP,
     User,
     Admin,
     OTP,
@@ -221,7 +222,7 @@ async def request_admin_password_reset(email: str) -> dict:
         )
 
     # Check for an existing OTP
-    existing_otp = await OTP.filter(
+    existing_otp = await AdminOTP.filter(
         user_id=admin.id, purpose=OTPTypeEnum.PASSWORD_RESET
     ).first()
 
@@ -232,13 +233,13 @@ async def request_admin_password_reset(email: str) -> dict:
         otp_code = await generate_random_otp()
 
         # Invalidate any existing OTPs for password reset for this user
-        await OTP.filter(
+        await AdminOTP.filter(
             user_id=admin.id, purpose=OTPTypeEnum.PASSWORD_RESET
         ).delete()
 
         # Create a new OTP entry
         try:
-            new_otp = OTP(
+            new_otp = AdminOTP(
                 otp_code=otp_code,
                 user_id=admin.id,
                 purpose=OTPTypeEnum.PASSWORD_RESET,
@@ -385,20 +386,20 @@ async def generate_and_send_otp(admin_id: str, purpose: str) -> dict:
         )
 
     # Check for existing OTP for this admin and purpose
-    existing_otp = await OTP.filter(user_id=admin.id, purpose=purpose).first()
+    existing_otp = await AdminOTP.filter(user_id=admin.id, purpose=purpose).first()
 
     # Validate existing OTP or generate a new one
     if existing_otp and existing_otp.expiration > datetime.now(timezone.utc):
         otp_code = existing_otp.otp_code
     else:
         otp_code = await generate_random_otp()  # Generate a new random OTP
-        await OTP.filter(
+        await AdminOTP.filter(
             user_id=admin.id, purpose=purpose
         ).delete()  # Invalidate old OTPs
 
         # Create and save the new OTP
         try:
-            new_otp = OTP(
+            new_otp = AdminOTP(
                 user_id=admin.id,
                 purpose=purpose,
                 otp_code=otp_code,
