@@ -1,6 +1,7 @@
 from tortoise import fields
 from tortoise.models import Model
 from Users.Data_Schemas import RoleEnum, OTPTypeEnum, AddressTypeEnum
+from Products.Data_Schemas import ProductStatusEnum
 
 
 class User(Model):
@@ -143,3 +144,30 @@ class Admin(Model):
     class Meta:
         table = "admin"
         ordering = ["created_at"]
+        
+class Product(Model):
+    id = fields.UUIDField(pk=True)
+    name = fields.CharField(max_length=255, description="Product Name")
+    model = fields.CharField(max_length=255, description="Product Model")
+    details = fields.JSONField(description="Additional Product Details")
+
+    class Meta:
+        table = "product"
+
+
+class ProductInstance(Model):
+    id = fields.UUIDField(pk=True)
+    product = fields.ForeignKeyField(
+        "models.Product", related_name="instances", on_delete=fields.CASCADE
+    )
+    serial_number = fields.CharField(
+        max_length=255, unique=True, description="Unique Serial Number of the Product Instance"
+    )
+    status = fields.CharEnumField(
+        ProductStatusEnum, default=ProductStatusEnum.available, description="Current status of the Product Instance"
+    )
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "product_instance"
