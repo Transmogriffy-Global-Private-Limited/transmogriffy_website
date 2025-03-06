@@ -82,6 +82,23 @@ class OTP(Model):
         table = "otp"
 
 
+class AdminOTP(Model):
+    otp_code = fields.CharField(
+        max_length=8, pk=True
+    )  # Primary key for uniqueness
+    admin = fields.ForeignKeyField(
+        "models.Admin", related_name="otps", on_delete="CASCADE"
+    )
+    purpose = fields.CharEnumField(
+        OTPTypeEnum, description="Purpose of the OTP"
+    )
+    expiration = fields.DatetimeField()
+    created_at = fields.DatetimeField(auto_now_add=True)
+
+    class Meta:
+        table = "admin_otp"
+
+
 class APIActivityLog(Model):
     """
     Model to track API activity details such as IP address, request, response,
