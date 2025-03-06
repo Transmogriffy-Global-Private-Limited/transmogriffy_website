@@ -162,6 +162,28 @@ async def verify_otp(
         )
 
 
+async def verify_admin_otp(
+    user_id: str, otp_code: str, purpose: OTPTypeEnum
+) -> bool:
+    """
+    Verifies an OTP for a specific user and purpose. If valid, deletes the OTP.
+    """
+    otp_entry = await OTP.get_or_none(
+        user_id=user_id, otp_code=otp_code, purpose=purpose
+    )
+
+    # Check OTP existence and expiration
+    if otp_entry and otp_entry.expiration > datetime.now(timezone.utc):
+        # OTP is valid; delete it after successful verification
+        await otp_entry.delete()
+        return True
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OTP",
+        )
+
+
 async def verify_user_password(entered_password, user_password):
     verified = bcrypt.verify(entered_password, user_password)
     return verified
