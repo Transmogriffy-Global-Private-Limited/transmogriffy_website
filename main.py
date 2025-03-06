@@ -7,8 +7,10 @@ from Products.Router import Products_Router
 from decouple import config
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware import Middleware
+from fastapi.responses import FileResponse
 from Methods import VerifyAPIKeyMiddleware, APIActivityLoggingMiddleware
 from contextlib import asynccontextmanager
+from os import path
 
 
 @asynccontextmanager
@@ -45,6 +47,12 @@ app = FastAPI(
 async def root():
     return {"message": "Welcome to the Transmogriffy Website Backend"}
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Serves the default favicon.ico."""
+    FAVICON_PATH = config(FAVICON_PATH)
+    if path.exists(FAVICON_PATH):
+        return FileResponse(FAVICON_PATH)
 
 # Register the routers
 routers = [
