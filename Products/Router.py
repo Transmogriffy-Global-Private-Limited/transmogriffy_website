@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Header, status, HTTPException
-from Utility_Methods import verify_jwt
+from Utility_Methods.Utility_Methods import verify_jwt
 from Products.Methods import (
     add_product,
     update_product,
