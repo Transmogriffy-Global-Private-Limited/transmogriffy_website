@@ -2,7 +2,6 @@ from email.policy import default
 from tortoise import fields
 from tortoise.models import Model
 from Users.Data_Schemas import RoleEnum, OTPTypeEnum, AddressTypeEnum
-from Products.Data_Schemas import ProductStatusEnum
 
 
 class User(Model):
