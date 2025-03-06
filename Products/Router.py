@@ -12,8 +12,6 @@ from Products.Methods import (
     add_product,
     update_product,
     toggle_product_listing,
-    create_bulk_units,
-    update_product_unit,
     get_product,
     upload_product_images,
     remove_product_images,
@@ -23,8 +21,6 @@ from Products.Data_Schemas import (
     AddProductSchema,
     UpdateProductSchema,
     ToggleProductListingSchema,
-    CreateBulkUnitsSchema,
-    UpdateProductUnitSchema,
     SearchProductsSchema,
 )
 from typing import List
