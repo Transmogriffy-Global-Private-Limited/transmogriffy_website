@@ -3,16 +3,17 @@ from typing import List, Optional
 from pydantic import BaseModel, UUID4, Field
 
 
-class ProductStatusEnum(str, Enum):
-    in_cart = "inCart"
-    in_order = "inanOrder"
-    available = "available"
-
-
 class AddProductSchema(BaseModel):
     name: str
     model: str
     details: dict
+    quantity: Optional[int] = None
+
+
+class UpdateProductSchema(BaseModel):
+    name: Optional[str] = None
+    model: Optional[str] = None
+    details: Optional[dict] = None
     quantity: Optional[int] = None
 
 

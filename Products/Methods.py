@@ -3,9 +3,7 @@ from fastapi import HTTPException, status, File, UploadFile
 from tortoise.exceptions import DoesNotExist, IntegrityError
 from Database_and_ORM.Database_Models import (
     Product,
-    ProductInstance,
     Admin,
-    ProductStatusEnum,
 )
 from Products.Data_Schemas import (
     AddProductSchema,
@@ -135,9 +133,6 @@ async def get_product(product_id: uuid) -> dict:
         product = await Product.get(
             id=product_id, is_listed=True
         )  # Ensure only listed products are fetched
-        available_count = await ProductInstance.filter(
-            product_id=product_id, status=ProductStatusEnum.available
-        ).count()
         image_paths = get_product_images(product_id)
 
         return {
@@ -145,7 +140,6 @@ async def get_product(product_id: uuid) -> dict:
             "name": product.name,
             "model": product.model,
             "details": product.details,
-            "available_units": available_count,  # Count of available product instances
             "is_listed": product.is_listed,
             "image_paths": image_paths,
             "quantity": product.quantity,
