@@ -11,8 +11,6 @@ from Products.Data_Schemas import (
     AddProductSchema,
     UpdateProductSchema,
     ToggleProductListingSchema,
-    CreateBulkUnitsSchema,
-    UpdateProductUnitSchema,
 )
 import re
 import numpy as np

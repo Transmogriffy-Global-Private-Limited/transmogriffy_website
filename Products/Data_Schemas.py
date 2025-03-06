@@ -16,14 +16,6 @@ class AddProductSchema(BaseModel):
     quantity: Optional[int] = None
 
 
-class UpdateProductSchema(BaseModel):
-    product_id: UUID4
-    name: Optional[str] = None
-    model: Optional[str] = None
-    details: Optional[dict] = None
-    quantity: Optional[int] = None
-
-
 class ToggleProductListingSchema(BaseModel):
     product_id: UUID4
 
