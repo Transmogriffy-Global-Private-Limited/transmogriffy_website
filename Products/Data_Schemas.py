@@ -13,6 +13,7 @@ class AddProductSchema(BaseModel):
     name: str
     model: str
     details: dict
+    quantity: Optional[int] = None
 
 
 class UpdateProductSchema(BaseModel):
@@ -20,6 +21,7 @@ class UpdateProductSchema(BaseModel):
     name: Optional[str] = None
     model: Optional[str] = None
     details: Optional[dict] = None
+    quantity: Optional[int] = None
 
 
 class ToggleProductListingSchema(BaseModel):

@@ -150,6 +150,7 @@ async def get_product(product_id: uuid) -> dict:
             "available_units": available_count,  # Count of available product instances
             "is_listed": product.is_listed,
             "image_paths": image_paths,
+            "quantity": product.quantity,
         }
     except DoesNotExist:
         raise HTTPException(
