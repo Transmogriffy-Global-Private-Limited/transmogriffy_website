@@ -1,4 +1,3 @@
-from email.policy import default
 from tortoise import fields
 from tortoise.models import Model
 from Users.Data_Schemas import RoleEnum, OTPTypeEnum, AddressTypeEnum
@@ -168,6 +167,7 @@ class Product(Model):
     name = fields.CharField(max_length=255, description="Product Name")
     model = fields.CharField(max_length=255, description="Product Model")
     details = fields.JSONField(description="Additional Product Details")
+    quantity = fields.IntField(default=1)
     is_listed = fields.BooleanField(default=True)
 
     class Meta:
