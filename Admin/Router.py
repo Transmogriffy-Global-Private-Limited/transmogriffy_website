@@ -36,6 +36,7 @@ from Admin.Methods import (
     upload_admin_profile_picture,
     get_admin_profile_picture,
     verify_email_otp,
+    view_user_data,
 )
 
 from Database_and_ORM.Database_Models import Admin
