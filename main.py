@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from os import path
 from Order.Router import order_router
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Run startup code here
@@ -62,7 +63,7 @@ routers = [
     (Admin_Router, "/admin", ["Admin"]),
     (Products_Router, "/products", ["Products"]),
     (cart_router, "/cart", ["Cart"]),
-    (order_router,"/order",["Order"])
+    (order_router, "/order", ["Order"]),
 ]
 
 for router, prefix, tags in routers:

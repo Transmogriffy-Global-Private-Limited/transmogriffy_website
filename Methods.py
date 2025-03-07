@@ -36,10 +36,14 @@ class VerifyAPIKeyMiddleware(BaseHTTPMiddleware):
         valid_api_key = config("API_KEY")
 
         if not api_key:
-            return JSONResponse(status_code=401, detail="No API key present")
+            return JSONResponse(
+                status_code=401, content={"detail": "No API key present"}
+            )
 
         if api_key != valid_api_key:
-            return JSONResponse(status_code=403, detail="Invalid API Key")
+            return JSONResponse(
+                status_code=403, content={"detail": "Invalid API Key"}
+            )
 
         response = await call_next(request)
         return response

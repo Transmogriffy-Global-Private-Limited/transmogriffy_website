@@ -1,7 +1,7 @@
 import uuid
 from fastapi import HTTPException, status
 from Database_and_ORM.Database_Models import Cart, Product
-from .Database_Schemas import CartSchema,ManagementQuantity
+from .Database_Schemas import CartSchema, ManagementQuantity
 from typing import Dict
 
 
@@ -11,14 +11,13 @@ async def add_to_cart(payload: Dict, cart_data: CartSchema):
     productid = cart_data.productid
     price = cart_data.price
 
-
     try:
         new_cart_entry = await Cart.create(
             id=uuid.uuid4(),
             userid=userid,
             productid=productid,
-            quantity = 1,
-            price=price
+            quantity=1,
+            price=price,
         )
         return new_cart_entry
     except Exception as e:
@@ -28,7 +27,9 @@ async def add_to_cart(payload: Dict, cart_data: CartSchema):
         )
 
 
-async def increase_quantity(payload: Dict, management_data: ManagementQuantity):
+async def increase_quantity(
+    payload: Dict, management_data: ManagementQuantity
+):
     productid = management_data.productid
     if not productid:
         raise HTTPException(
@@ -54,12 +55,16 @@ async def increase_quantity(payload: Dict, management_data: ManagementQuantity):
             )
 
         # Update product quantity
-        await Product.filter(id=productid).update(quantity=product.quantity - 1)
+        await Product.filter(id=productid).update(
+            quantity=product.quantity - 1
+        )
 
         # Update cart entry
         await Cart.filter(productid=productid).update(
             quantity=cart_entry.quantity + 1,
-            price=str(float(cart_entry.price) + float(product.details['price']))
+            price=str(
+                float(cart_entry.price) + float(product.details["price"])
+            ),
         )
 
         return {"message": "Quantity increased successfully"}
@@ -69,7 +74,10 @@ async def increase_quantity(payload: Dict, management_data: ManagementQuantity):
             detail=f"Failed to increase quantity: {str(e)}",
         )
 
-async def decrease_quantity(payload: Dict, management_data: ManagementQuantity):
+
+async def decrease_quantity(
+    payload: Dict, management_data: ManagementQuantity
+):
     productid = management_data.productid
     if not productid:
         raise HTTPException(
@@ -87,17 +95,25 @@ async def decrease_quantity(payload: Dict, management_data: ManagementQuantity):
 
         if cart_entry.quantity <= 1:
             await Cart.filter(productid=productid).delete()
-   
+
             product = await Product.get(id=productid)
-            await Product.filter(id=productid).update(quantity=product.quantity + 1)
-            return {"message": "Quantity decreased to zero and cart entry removed"}
+            await Product.filter(id=productid).update(
+                quantity=product.quantity + 1
+            )
+            return {
+                "message": "Quantity decreased to zero and cart entry removed"
+            }
         else:
             await Cart.filter(productid=productid).update(
                 quantity=cart_entry.quantity - 1,
-                price=str(float(cart_entry.price) - float(product.details['price']))
+                price=str(
+                    float(cart_entry.price) - float(product.details["price"])
+                ),
             )
             product = await Product.get(id=productid)
-            await Product.filter(id=productid).update(quantity=product.quantity + 1)
+            await Product.filter(id=productid).update(
+                quantity=product.quantity + 1
+            )
             return {"message": "Quantity decreased successfully"}
     except Exception as e:
         raise HTTPException(

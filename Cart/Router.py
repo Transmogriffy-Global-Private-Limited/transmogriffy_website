@@ -5,8 +5,8 @@ from fastapi import (
     status,
     HTTPException,
 )
-from .Methods import add_to_cart,increase_quantity, decrease_quantity
-from .Database_Schemas import CartSchema,ManagementQuantity
+from .Methods import add_to_cart, increase_quantity, decrease_quantity
+from .Database_Schemas import CartSchema, ManagementQuantity
 
 cart_router = APIRouter()
 
@@ -25,7 +25,7 @@ async def add_to_cart_endpoint(
         )
 
 
-@cart_router.post('/increasequantity', status_code=status.HTTP_200_OK)
+@cart_router.post("/increasequantity", status_code=status.HTTP_200_OK)
 async def increase_quantity_endpoint(
     management_data: ManagementQuantity,
 ):
@@ -38,7 +38,8 @@ async def increase_quantity_endpoint(
             detail=f"Failed to increase quantity: {str(e)}",
         )
 
-@cart_router.post('/decreasequantity', status_code=status.HTTP_200_OK)
+
+@cart_router.post("/decreasequantity", status_code=status.HTTP_200_OK)
 async def decrease_quantity_endpoint(
     management_data: ManagementQuantity,
 ):
