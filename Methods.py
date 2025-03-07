@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import Request, HTTPException, status, Header
 from fastapi.responses import StreamingResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 from decouple import config
 import traceback
 from typing import Optional, Callable
@@ -35,10 +36,10 @@ class VerifyAPIKeyMiddleware(BaseHTTPMiddleware):
         valid_api_key = config("API_KEY")
 
         if not api_key:
-            raise HTTPException(status_code=401, detail="No API key present")
+            return JSONResponse(status_code=401, detail="No API key present")
 
         if api_key != valid_api_key:
-            raise HTTPException(status_code=403, detail="Invalid API Key")
+            return JSONResponse(status_code=403, detail="Invalid API Key")
 
         response = await call_next(request)
         return response
