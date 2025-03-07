@@ -11,11 +11,6 @@ async def add_to_cart(payload: Dict, cart_data: CartSchema):
     productid = cart_data.productid
     price = cart_data.price
 
-    if not all([userid, productid, price]):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing required fields",
-        )
 
     try:
         new_cart_entry = await Cart.create(
@@ -83,7 +78,6 @@ async def decrease_quantity(payload: Dict, management_data: ManagementQuantity):
         )
 
     try:
-        # Retrieve the cart entry to update
         cart_entry = await Cart.get(productid=productid)
         if not cart_entry:
             raise HTTPException(
@@ -92,19 +86,16 @@ async def decrease_quantity(payload: Dict, management_data: ManagementQuantity):
             )
 
         if cart_entry.quantity <= 1:
-            # Remove cart entry if quantity reaches zero
             await Cart.filter(productid=productid).delete()
-            # Update product quantity
+   
             product = await Product.get(id=productid)
             await Product.filter(id=productid).update(quantity=product.quantity + 1)
             return {"message": "Quantity decreased to zero and cart entry removed"}
         else:
-            # Update cart entry
             await Cart.filter(productid=productid).update(
                 quantity=cart_entry.quantity - 1,
                 price=str(float(cart_entry.price) - float(product.details['price']))
             )
-            # Update product quantity
             product = await Product.get(id=productid)
             await Product.filter(id=productid).update(quantity=product.quantity + 1)
             return {"message": "Quantity decreased successfully"}
