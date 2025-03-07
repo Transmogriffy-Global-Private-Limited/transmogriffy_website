@@ -210,5 +210,6 @@ class Order(Model):
     totalamount = fields.CharField(default=None,max_length=600)
     paymentoption = fields.CharField(default=None,max_length=600)
     orderstatus = fields.CharField(default=None,max_length=600)
+    ordered_quantity = fields.CharField(default=None,max_length=600)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
