@@ -13,7 +13,6 @@ async def order_create(payload: dict, order_data: OrderSchema):
     userid = order_data.userid
     productid = order_data.productid
     order_quantity = order_data.order_quantity
-    print(order_quantity)
     totalamount = order_data.totalamount
     paymentoption = order_data.paymentoption
     orderstatus = order_data.orderstatus

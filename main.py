@@ -13,7 +13,7 @@ from Methods import VerifyAPIKeyMiddleware, APIActivityLoggingMiddleware
 from contextlib import asynccontextmanager
 from os import path
 from Order.Router import order_router
-
+from Payments.Router import payment_endpoint
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -64,6 +64,7 @@ routers = [
     (Products_Router, "/products", ["Products"]),
     (cart_router, "/cart", ["Cart"]),
     (order_router, "/order", ["Order"]),
+    (payment_endpoint,"/payments",['Payments'])
 ]
 
 for router, prefix, tags in routers:
