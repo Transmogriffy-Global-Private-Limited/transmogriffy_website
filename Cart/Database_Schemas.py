@@ -5,6 +5,10 @@ from typing import List, Optional
 
 
 class CartSchema(BaseModel):
-    userid: Optional[str] = None
-    productid: Optional[str] = None
-    price: Optional[str] = None
+    userid: Optional[str]=None
+    productid:Optional[str]=None
+    price:Optional[str]=None
+
+class ManagementQuantity(BaseModel):
+    quantity:Optional[int]=None
+    productid:Optional[str]=None
