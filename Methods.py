@@ -34,6 +34,9 @@ class VerifyAPIKeyMiddleware(BaseHTTPMiddleware):
         api_key = request.headers.get("API-Key")
         valid_api_key = config("API_KEY")
 
+        if not api_key:
+            raise HTTPException(status_code=401, detail="No API key present")
+
         if api_key != valid_api_key:
             raise HTTPException(status_code=403, detail="Invalid API Key")
 
