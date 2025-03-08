@@ -6,28 +6,26 @@ import os
 import shutil
 import razorpay
 from decouple import config
-from .Data_Schemas import PaymentSchema
-from Database_and_ORM.Database_Models import Payments, User, Product
+from .Data_Schemas import PaymentSchema,Transactions, TransactionsHistoryUser
+from Database_and_ORM.Database_Models import Payments, User, Product,Transactions
 import razorpay
 import random
 from decouple import config
 
-# Ensure environment variables are set
 razorpaykey = config('RAZOR_PAY_KEY')
 razorpaysecret = config("RAZOR_PAY_SECRET")
 
-# Initialize Razorpay client
+
 razorpay_client = razorpay.Client(auth=(razorpaykey, razorpaysecret))
 
 async def razorpayfn(payload: dict, payment_schema: PaymentSchema):
-    
-    # Extract necessary information from payment_schema
+
     userid = payment_schema.userid
     productid = payment_schema.paymentid
     price = payment_schema.price
     
     try:
-        # Check if user exists
+       
         user_entry = await User.get(id=userid)
         if not user_entry:
             raise HTTPException(
@@ -35,15 +33,13 @@ async def razorpayfn(payload: dict, payment_schema: PaymentSchema):
                 detail="User entry not found"
             )
         
-        # Check if product exists
+    
         product_entry = await Product.get(id=productid)
         if not product_entry:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Product entry not found"  # Corrected detail message
+                detail="Product entry not found"
             )
-        
-        # Create order data for Razorpay
         order_data = {
             "amount": int(price) * 100, 
             "currency": "INR",
@@ -53,10 +49,7 @@ async def razorpayfn(payload: dict, payment_schema: PaymentSchema):
             }
         }
         
-        # Create a new order using Razorpay client
         order = razorpay_client.order.create(data=order_data)
-        
-        # Prepare payment data to save in the database
         payment_data = {
             "userid": userid,
             "productid": productid,
@@ -68,10 +61,10 @@ async def razorpayfn(payload: dict, payment_schema: PaymentSchema):
             "notes": order['notes']
         }
         
-        # Save payment details in the database
+      
         new_order = await Payments.create(**payment_data)
         
-        # Return a successful message
+       
         return {"message": "Payment processed successfully", "order_id": order['id']}
     
     except DoesNotExist:
@@ -85,11 +78,50 @@ async def razorpayfn(payload: dict, payment_schema: PaymentSchema):
             detail="Database integrity error. Please check your data."
         )
     except Exception as e:
-        # Log the exception for debugging purposes
         print(f"An error occurred: {e}")
-        
-        # Return an error message
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal server error occurred. Please try again later."
+        )
+
+async def verifypayment(payload:dict,verify_payment: Transactions):
+        userid = verify_payment.userid
+        productid = verify_payment.productid
+        razorpaypamentid = verify_payment.razorpaypaymentid
+        price = verify_payment.price
+        try:
+            payment_verification = await verification.create(
+                id = uuid.uuid4,
+                userid = userid,
+                productid = productid,
+                razorpaypamentid = razorpaypamentid,
+                price = price
+            )
+            return payment_verification
+        except Exception as e:
+              raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error occurred: {str(e)}",
+        )
+
+async def transaction_history(payload:dict, management_data:TransactionsHistoryUser):
+    userid = management_data.userid
+    try:
+        thus = await Transactions.get(userid = userid)
+        transactionshistory = []
+        for thu in thus:
+            userdetails = await User.get(id=thu.userid)
+            order_details={
+                "id":thu.id,
+                "paymentid":thu.razorpaypaymentid,
+                "price":thu.price,
+                "userid":thu.userid,
+                "fullname":thu.name
+            }
+            transactionshistory.append(order_details)
+        return transactionshistory
+    except Exception as e:
+         raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch transaction history: {str(e)}",
         )

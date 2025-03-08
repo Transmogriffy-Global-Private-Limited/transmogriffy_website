@@ -5,8 +5,8 @@ from fastapi import (
     status,
     HTTPException,
 )
-from .Methods import razorpayfn
-from .Data_Schemas import PaymentSchema
+from .Methods import razorpayfn,verifypayment,transaction_history
+from .Data_Schemas import PaymentSchema, Transactions,TransactionsHistoryUser
 
 payment_router = APIRouter()
 
@@ -14,22 +14,40 @@ payment_router = APIRouter()
 async def payment_endpoint(payment_data: PaymentSchema):
     
     try:
-        # Call the function to create a Razorpay order and save payment details
         result = await razorpayfn({}, payment_data)
-        
-        # Return the result if successful
         return result
     
     except HTTPException as e:
-        # Re-raise the HTTPException to maintain the status code and detail
         raise e
     
     except Exception as e:
-        # Log the exception for debugging purposes
         print(f"An error occurred: {e}")
-        
-        # Return an error message
+      
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal server error occurred. Please try again later."
         )
+
+@payment_endpoint.post("/verifypayment",status_code=status.HTTP_200_OK)
+async def verify_payment_endpoint(verify_ep:Transactions):
+    try:
+        result = await verifypayment({},verify_ep)
+        return result
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An internal server error occurred. Please try again later."
+        )
+@payment_endpoint.post("/usertransactionhistory", status_code=status.HTTP_200_OK)
+async def user_transaction_history(th_of_u:TransactionsHistoryUser):
+    try:
+        result = await transaction_history({},th_of_u)
+        return result
+    except HTTPException as e:
+        raise e
+        
+    except Exception as e:
+        print(e)

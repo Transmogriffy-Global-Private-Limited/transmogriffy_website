@@ -226,3 +226,12 @@ class Payments(Model):
     notes = fields.CharField(default=None,max_length=600)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
+
+class Transactions(Model):
+    id = fields.UUIDField(pk=True)
+    razorpaypaymentid =  fields.CharField(default=None,max_length=600)
+    userid =  fields.CharField(default=None,max_length=600)
+    productid = fields.CharField(default=None,max_length=600)
+    price = fields.CharField(default=None,max_length=655)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
