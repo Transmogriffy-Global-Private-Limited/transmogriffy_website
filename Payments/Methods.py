@@ -90,7 +90,7 @@ async def verifypayment(payload:dict,verify_payment: Transactions):
         razorpaypamentid = verify_payment.razorpaypaymentid
         price = verify_payment.price
         try:
-            payment_verification = await verification.create(
+            payment_verification = await Transactions.create(
                 id = uuid.uuid4,
                 userid = userid,
                 productid = productid,

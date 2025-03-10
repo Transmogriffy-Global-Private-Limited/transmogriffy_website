@@ -28,7 +28,7 @@ async def payment_endpoint(payment_data: PaymentSchema):
             detail="An internal server error occurred. Please try again later."
         )
 
-@payment_endpoint.post("/verifypayment",status_code=status.HTTP_200_OK)
+@payment_router.post("/verifypayment",status_code=status.HTTP_200_OK)
 async def verify_payment_endpoint(verify_ep:Transactions):
     try:
         result = await verifypayment({},verify_ep)
@@ -41,7 +41,8 @@ async def verify_payment_endpoint(verify_ep:Transactions):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal server error occurred. Please try again later."
         )
-@payment_endpoint.post("/usertransactionhistory", status_code=status.HTTP_200_OK)
+    
+@payment_router.post("/usertransactionhistory", status_code=status.HTTP_200_OK)
 async def user_transaction_history(th_of_u:TransactionsHistoryUser):
     try:
         result = await transaction_history({},th_of_u)
