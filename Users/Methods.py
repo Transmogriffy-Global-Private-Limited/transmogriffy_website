@@ -341,7 +341,7 @@ async def verify_email_otp(payload: Dict, otp_code: str) -> bool:
     user = await User.get(id=user_id)
 
     if await verify_otp(
-        otp_code, user_id, purpose=OTPTypeEnum.MAIL_VERIFICATION
+        otp_code = otp_code, user_id = user_id, purpose=OTPTypeEnum.MAIL_VERIFICATION
     ):
         # Update the user's email_verified status
         user.email_verified = True

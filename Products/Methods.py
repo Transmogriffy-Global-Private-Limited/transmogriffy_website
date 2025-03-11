@@ -79,9 +79,10 @@ async def upload_product_images(
     for file in files:
         # ✅ Enforce file size limit
         if file.size > config("MAXIMUM_FILE_SIZE"):
+            mfz = config("MAXIMUM_FILE_SIZE")
             raise HTTPException(
                 status_code=413,
-                detail=f"File {file.filename} exceeds size limit ({config("MAXIMUM_FILE_SIZE")} bytes)",
+                detail=f"File {file.filename} exceeds size limit {mfz} MB",
             )
 
         # ✅ Save new file
