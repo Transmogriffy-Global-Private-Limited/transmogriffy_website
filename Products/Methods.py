@@ -119,7 +119,7 @@ async def remove_product_images(product_id: str, payload: dict):
 
 def get_product_images(product_id: str) -> list:
     """Returns a list of image paths for a product, if any exist."""
-    product_path = os.path.join(config("PRODUCTS_MEDIA_PATH"), product_id)
+    product_path = os.path.join(config("PRODUCTS_MEDIA_PATH"), str(product_id))
     if os.path.exists(product_path) and os.path.isdir(product_path):
         return [
             os.path.join(product_path, f)
@@ -163,7 +163,7 @@ async def get_all_products() -> List[ProductResponse]:
     try:
 
         # Query products
-        query = Product.filter(is_listed=True).order_by("+quantity")
+        query = Product.filter(is_listed=True).order_by("quantity")
         products = await query
 
         if not products:
