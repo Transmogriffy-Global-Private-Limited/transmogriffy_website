@@ -65,15 +65,15 @@ async def get_product_endpoint(product_id: str):
 
 
 @Products_Router.get(
-    "/range/{range_limit}",
+    "/",
     status_code=status.HTTP_200_OK,
 )
-async def get_all_products_endpoint(range_limit: str):
+async def get_all_products_endpoint():
     """
     Retrieve listed products within a specified range provided as a URL parameter.
     Example: /products/range/1-10
     """
-    return await get_all_products(range_limit=range_limit)
+    return await get_all_products()
 
 
 @Products_Router.post("/search", status_code=status.HTTP_200_OK)

@@ -157,47 +157,19 @@ async def get_all_products(range_limit: str) -> List[ProductResponse]:
     """
     Retrieves all listed products within a specified range.
 
-    Args:
-        range_limit (str): Range string in the format 'start-end', e.g., '1-10'.
-
     Returns:
         List[ProductResponse]: List of product data.
     """
     try:
-        # Validate and parse range string
-        match = re.match(r"^(\d+)-(\d+)$", range_limit.strip())
-        if not match:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid range format. Use 'start-end' (e.g., '1-10').",
-            )
-
-        start, end = map(int, match.groups())
-
-        # Validation of range logic
-        if start < 1 or end < start:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid range values. Ensure start >= 1 and end >= start.",
-            )
-
-        # Adjust for zero-based offset (DB indexing usually starts at 0)
-        offset_value = start - 1
-        limit_value = end - offset_value
 
         # Query products
-        query = (
-            Product.filter(is_listed=True)
-            .order_by("+quantity")
-            .offset(offset_value)
-            .limit(limit_value)
-        )
+        query = Product.filter(is_listed=True).order_by("+quantity")
         products = await query
 
         if not products:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No products found in the given range.",
+                detail="No products found.",
             )
 
         # Build response
