@@ -68,8 +68,10 @@ async def login_admin_endpoint(response: Response, admin_data: AdminUpdate):
             email=admin_data.email, password=admin_data.password
         )
         response.headers["Authorization"] = f"Bearer {token}"
-        response.headers["User_Type"] = "Admin"
-        return {"message": f"Admin {admin.name} successfully logged in"}
+        return {
+            "message": f"Admin {admin.name} successfully logged in",
+            "User_Type": "Admin",
+        }
     except HTTPException as e:
         raise e
 
@@ -144,9 +146,9 @@ async def verify_2fa_login_endpoint(
         email=two_fa_data.email, otp_code=two_fa_data.otp_code
     )
     response.headers["Authorization"] = f"Bearer {token}"
-    response.headers["User_Type"] = "Admin"
     return {
-        "message": f"2FA verification successful. Admin {admin.name} is now logged in."
+        "message": f"2FA verification successful. Admin {admin.name} is now logged in.",
+        "User_Type": "Admin",
     }
 
 
