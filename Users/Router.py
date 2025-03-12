@@ -77,6 +77,7 @@ async def login_user(response: Response, login_data: LoginData):
             email=login_data.email, password=login_data.password
         )
         response.headers["Authorization"] = f"Bearer {token_or_message}"
+        response.headers["User_Type"] = "User"
         return {"message": f"User {user.name} has successfully logged in"}
     except HTTPException as e:
         raise e
@@ -161,6 +162,7 @@ async def verify_2fa_login_endpoint(
         two_fa_data.email, two_fa_data.otp_code
     )
     response.headers["Authorization"] = f"Bearer {token}"
+    response.headers["User_Type"] = "User"
     return {
         "message": f"2FA verification successful. User {user.name} is now logged in."
     }

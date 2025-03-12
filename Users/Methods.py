@@ -189,7 +189,9 @@ async def verify_2fa_and_login(email: str, otp_code: str):
     # Retrieve the OTP entry for the user and 2FA purpose
     user = await User.get_or_none(email=email)
     user_id = user.id
-    verified = await verify_otp(user_id = user_id, otp_code = otp_code, purpose=OTPTypeEnum.TWO_FA)
+    verified = await verify_otp(
+        user_id=user_id, otp_code=otp_code, purpose=OTPTypeEnum.TWO_FA
+    )
 
     if verified:
         # Generate JWT token
@@ -341,7 +343,9 @@ async def verify_email_otp(payload: Dict, otp_code: str) -> bool:
     user = await User.get(id=user_id)
 
     if await verify_otp(
-        otp_code = otp_code, user_id = user_id, purpose=OTPTypeEnum.MAIL_VERIFICATION
+        otp_code=otp_code,
+        user_id=user_id,
+        purpose=OTPTypeEnum.MAIL_VERIFICATION,
     ):
         # Update the user's email_verified status
         user.email_verified = True

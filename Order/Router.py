@@ -1,13 +1,6 @@
-from fastapi import (
-    APIRouter,
-    Depends,
-    Header,
-    status,
-    HTTPException,
-    Body
-)
+from fastapi import APIRouter, Depends, Header, status, HTTPException, Body
 
-from .Methods import order_create,order_history
+from .Methods import order_create, order_history
 from .Data_Schemas import OrderSchema, StandAloneUserId
 
 order_router = APIRouter()
@@ -23,6 +16,7 @@ async def order_endpoint(order_data: OrderSchema):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create order: {str(e)}",
         )
+
 
 @order_router.post("/orderhistory", status_code=status.HTTP_200_OK)
 async def get_order_history(request: StandAloneUserId):

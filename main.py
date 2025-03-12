@@ -15,6 +15,7 @@ from os import path
 from Order.Router import order_router
 from Payments.Router import payment_router
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Run startup code here
@@ -31,7 +32,13 @@ middlewares = [
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["Authorization", "authorization"],
+        expose_headers=[
+            "Authorization",
+            "authorization",
+            "User_Type",
+            "user_type",
+            "User_type",
+        ],
     ),
     Middleware(VerifyAPIKeyMiddleware),
     Middleware(APIActivityLoggingMiddleware),
@@ -64,7 +71,7 @@ routers = [
     (Products_Router, "/products", ["Products"]),
     (cart_router, "/cart", ["Cart"]),
     (order_router, "/order", ["Order"]),
-    (payment_router,"/payments",['Payments'])
+    (payment_router, "/payments", ["Payments"]),
 ]
 
 for router, prefix, tags in routers:
