@@ -194,6 +194,7 @@ async def get_all_products() -> List[ProductResponse]:
         raise  # Re-raise HTTP errors directly
     except Exception as e:
         # Optional: Log error `e`
+        print(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
