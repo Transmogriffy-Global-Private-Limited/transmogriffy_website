@@ -175,9 +175,7 @@ async def get_all_products() -> List[ProductResponse]:
         # Build response
         product_list = []
         for product in products:
-            image_paths = await get_product_images(
-                product.id
-            )  # Assuming async
+            image_paths = get_product_images(product.id)  # Assuming async
             product_list.append(
                 ProductResponse(
                     id=str(product.id),
