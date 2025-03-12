@@ -108,6 +108,7 @@ async def get_delisted_products_endpoint(
 
 
 @Products_Router.patch("/admin/upload-images/{product_id}", status_code=status.HTTP_200_OK)
+@Products_Router.patch("/admin/upload-images/{product_id}", status_code=status.HTTP_200_OK)
 async def upload_product_images_endpoint(
     product_id: str,
     files: List[UploadFile] = File(...),
@@ -117,6 +118,7 @@ async def upload_product_images_endpoint(
     return await upload_product_images(product_id, payload, files)
 
 
+@Products_Router.delete("/admin/remove-images/{product_id}", status_code=status.HTTP_200_OK)
 @Products_Router.delete("/admin/remove-images/{product_id}", status_code=status.HTTP_200_OK)
 async def remove_product_images_endpoint(
     product_id: str, payload: dict = Depends(verify_jwt)
