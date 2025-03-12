@@ -153,7 +153,7 @@ async def get_product(product_id: uuid) -> dict:
         )
 
 
-async def get_all_products(range_limit: str) -> List[ProductResponse]:
+async def get_all_products() -> List[ProductResponse]:
     """
     Retrieves all listed products within a specified range.
 
