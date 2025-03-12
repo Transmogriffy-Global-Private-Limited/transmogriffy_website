@@ -59,7 +59,7 @@ async def toggle_product_listing_endpoint(
     return await toggle_product_listing(payload, product_data)
 
 
-@Products_Router.get("/{product_id}", status_code=status.HTTP_200_OK)
+@Products_Router.get("/get_by_id/{product_id}", status_code=status.HTTP_200_OK)
 async def get_product_endpoint(product_id: str):
     return await get_product(product_id)
 
