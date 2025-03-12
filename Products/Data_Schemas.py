@@ -32,3 +32,13 @@ class GetDelistedProductsSchema(BaseModel):
 class SearchProductsSchema(BaseModel):
     query: str
     limit: str
+
+
+class ProductResponse(BaseModel):
+    id: str
+    name: str
+    model: str
+    details: dict
+    is_listed: bool
+    image_paths: List[str]
+    quantity: int

@@ -5,6 +5,7 @@ from fastapi import (
     status,
     HTTPException,
     File,
+    Query,
     UploadFile,
 )
 from Utility_Methods.Utility_Methods import verify_jwt
@@ -15,6 +16,7 @@ from Products.Methods import (
     get_product,
     upload_product_images,
     remove_product_images,
+    get_all_products,
 )
 from Products.Methods import ProductSearchEngine, DelistedProductSearchEngine
 from Products.Data_Schemas import (
@@ -22,6 +24,7 @@ from Products.Data_Schemas import (
     UpdateProductSchema,
     ToggleProductListingSchema,
     SearchProductsSchema,
+    ProductResponse,
 )
 from typing import List
 
@@ -59,6 +62,18 @@ async def toggle_product_listing_endpoint(
 @Products_Router.get("/{product_id}", status_code=status.HTTP_200_OK)
 async def get_product_endpoint(product_id: str):
     return await get_product(product_id)
+
+
+@Products_Router.get(
+    "/range/{range_limit}",
+    status_code=status.HTTP_200_OK,
+)
+async def get_all_products_endpoint(range_limit: str):
+    """
+    Retrieve listed products within a specified range provided as a URL parameter.
+    Example: /products/range/1-10
+    """
+    return await get_all_products(range_limit=range_limit)
 
 
 @Products_Router.post("/search", status_code=status.HTTP_200_OK)
