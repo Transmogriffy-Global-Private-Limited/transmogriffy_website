@@ -170,7 +170,7 @@ class Product(Model):
     details = fields.JSONField(description="Additional Product Details")
     quantity = fields.IntField(default=1)
     is_listed = fields.BooleanField(default=True)
-    price = fields.FloatField(null = False)
+    price = fields.FloatField(null=False)
 
     class Meta:
         table = "product"

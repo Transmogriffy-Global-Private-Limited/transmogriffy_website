@@ -145,6 +145,7 @@ async def get_product(product_id: uuid) -> dict:
             "is_listed": product.is_listed,
             "image_paths": image_paths,
             "quantity": product.quantity,
+            "price": product.price,
         }
     except DoesNotExist:
         raise HTTPException(
@@ -185,6 +186,7 @@ async def get_all_products() -> List[ProductResponse]:
                     is_listed=product.is_listed,
                     image_paths=image_paths,
                     quantity=product.quantity,
+                    price=product.price,
                 )
             )
 
@@ -233,6 +235,7 @@ async def toggle_product_listing(
             "name": product.name,
             "model": product.model,
             "is_listed": product.is_listed,
+            "price": product.price,
             "message": f"Product listing {'enabled' if product.is_listed else 'disabled'} successfully",
         }
     except DoesNotExist:
@@ -275,6 +278,7 @@ async def get_delisted_products(payload: dict, limit: str) -> dict:
                 "model": product.model,
                 "details": product.details,
                 "is_listed": product.is_listed,
+                "price": product.price,
                 "image_paths": get_product_images(
                     str(product.id)
                 ),  # ✅ Fetch image paths
@@ -332,14 +336,28 @@ class ProductSearchEngine:
             # Extract searchable terms
             tokens = self.tokenize(product.name) + self.tokenize(product.model)
 
+            type_value = flat_details.get("type", "").lower()
+            fast_charger_value = flat_details.get("fast_charger", "").lower()
+
+            # Normalize fast_charger to boolean-like values
+            if fast_charger_value in [
+                "yes",
+                "true",
+                "1",
+            ]:  # Flexible matching for 'yes', 'true', '1'
+                if "dc" in type_value:
+                    tokens.extend(["dc", "fast", "charger", "dc fast charger"])
+                elif "ac" in type_value:
+                    tokens.extend(["ac", "fast", "charger", "ac fast charger"])
+
             # Prioritize rated power (wattage)
             rated_power = 0
             for key, value in flat_details.items():
                 if (
                     "power" in key
                     or "wattage" in key
-                    or "rated_power"
-                    or "rated_for"
+                    or "rated_power" in key
+                    or "rated_for" in key
                     or "rated" in key
                 ):
                     rated_power = (
@@ -468,14 +486,28 @@ class DelistedProductSearchEngine:
             # Extract searchable terms
             tokens = self.tokenize(product.name) + self.tokenize(product.model)
 
+            type_value = flat_details.get("type", "").lower()
+            fast_charger_value = flat_details.get("fast_charger", "").lower()
+
+            # Normalize fast_charger to boolean-like values
+            if fast_charger_value in [
+                "yes",
+                "true",
+                "1",
+            ]:  # Flexible matching for 'yes', 'true', '1'
+                if "dc" in type_value:
+                    tokens.extend(["dc", "fast", "charger", "dc fast charger"])
+                elif "ac" in type_value:
+                    tokens.extend(["ac", "fast", "charger", "ac fast charger"])
+
             # Prioritize rated power (wattage)
             rated_power = 0
             for key, value in flat_details.items():
                 if (
                     "power" in key
                     or "wattage" in key
-                    or "rated_power"
-                    or "rated_for"
+                    or "rated_power" in key
+                    or "rated_for" in key
                     or "rated" in key
                 ):
                     rated_power = (
@@ -547,8 +579,8 @@ class DelistedProductSearchEngine:
                 if (
                     "power" in key
                     or "wattage" in key
-                    or "rated_power"
-                    or "rated_for"
+                    or "rated_power" in key
+                    or "rated_for" in key
                     or "rated" in key
                 ):
                     rated_power = (

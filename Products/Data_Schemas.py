@@ -8,6 +8,7 @@ class AddProductSchema(BaseModel):
     model: str
     details: dict
     quantity: Optional[int] = None
+    price: float
 
 
 class UpdateProductSchema(BaseModel):
@@ -15,6 +16,7 @@ class UpdateProductSchema(BaseModel):
     model: Optional[str] = None
     details: Optional[dict] = None
     quantity: Optional[int] = None
+    price: Optional[float] = None
 
 
 class ToggleProductListingSchema(BaseModel):
@@ -42,3 +44,4 @@ class ProductResponse(BaseModel):
     is_listed: bool
     image_paths: List[str]
     quantity: int
+    price: float
