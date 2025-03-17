@@ -26,6 +26,7 @@ class ProductDetailsSchema(BaseModel):
     weight_in_kgs: float = Field(..., description="Weight in kilograms")
     noise_level: str = Field(..., description="Noise level (e.g., '55dB')")
     effiiency_in_percentage: float = Field(..., alias="efficiency_in_percentage", description="Efficiency in percentage (e.g., 95.5)")
+    additional_details: Optional[str] = None
 
     @field_validator('fast_charger')
     def validate_fast_charger(cls, v):
