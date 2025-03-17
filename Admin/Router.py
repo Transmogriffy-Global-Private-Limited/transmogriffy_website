@@ -71,6 +71,7 @@ async def login_admin_endpoint(response: Response, admin_data: AdminUpdate):
         return {
             "message": f"Admin {admin.name} successfully logged in",
             "User_Type": "Admin",
+            "ID": f"{admin.id}",
         }
     except HTTPException as e:
         raise e
@@ -149,6 +150,7 @@ async def verify_2fa_login_endpoint(
     return {
         "message": f"2FA verification successful. Admin {admin.name} is now logged in.",
         "User_Type": "Admin",
+        "ID": f"{admin.id}",
     }
 
 
