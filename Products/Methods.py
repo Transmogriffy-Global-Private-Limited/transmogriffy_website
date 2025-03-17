@@ -56,13 +56,13 @@ async def add_product(
         for file in files:
             content = await file.read()
 
-            # ✅ Enforce size limit
-            if len(content) > config("MAXIMUM_FILE_SIZE"):
-                max_size_mb = int(config("MAXIMUM_FILE_SIZE")) * (1024 * 1024)
-                raise HTTPException(
-                    status_code=413,
-                    detail=f"File {file.filename} exceeds size limit {max_size_mb} MB",
-                )
+            # # ✅ Enforce size limit
+            # if len(content) > int (config("MAXIMUM_FILE_SIZE")):
+            #     max_size_mb = int(config("MAXIMUM_FILE_SIZE")) * (1024 * 1024)
+            #     raise HTTPException(
+            #         status_code=413,
+            #         detail=f"File {file.filename} exceeds size limit {max_size_mb} MB",
+            #     )
 
             # ✅ Save file
             file_path = os.path.join(product_path, file.filename)
@@ -220,14 +220,14 @@ async def update_product(
                 content = await file.read()
 
                 # ✅ Enforce size limit
-                if len(content) > config("MAXIMUM_FILE_SIZE"):
-                    max_size_mb = int(config("MAXIMUM_FILE_SIZE")) * (
-                        1024 * 1024
-                    )
-                    raise HTTPException(
-                        status_code=413,
-                        detail=f"File {file.filename} exceeds size limit {max_size_mb} MB",
-                    )
+                # if len(content) > config("MAXIMUM_FILE_SIZE"):
+                #     max_size_mb = int(config("MAXIMUM_FILE_SIZE")) * (
+                #         1024 * 1024
+                #     )
+                #     raise HTTPException(
+                #         status_code=413,
+                #         detail=f"File {file.filename} exceeds size limit {max_size_mb} MB",
+                #     )
 
                 # ✅ Save new file
                 file_path = os.path.join(product_path, file.filename)
