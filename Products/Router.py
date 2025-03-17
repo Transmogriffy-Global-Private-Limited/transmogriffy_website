@@ -3,7 +3,6 @@ from fastapi import (
     Depends,
     Header,
     status,
-    HTTPException,
     File,
     Query,
     UploadFile,
@@ -14,8 +13,6 @@ from Products.Methods import (
     update_product,
     toggle_product_listing,
     get_product,
-    upload_product_images,
-    remove_product_images,
     get_all_products,
 )
 from Products.Methods import ProductSearchEngine, DelistedProductSearchEngine
@@ -24,7 +21,6 @@ from Products.Data_Schemas import (
     UpdateProductSchema,
     ToggleProductListingSchema,
     SearchProductsSchema,
-    ProductResponse,
 )
 from typing import List
 
