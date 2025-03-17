@@ -37,17 +37,20 @@ delisted_product_search_engine = DelistedProductSearchEngine()
 
 @Products_Router.post("/add", status_code=status.HTTP_201_CREATED)
 async def add_product_endpoint(
-    product_data: AddProductSchema, payload: dict = Depends(verify_jwt)
+    product_data: AddProductSchema,
+    files: List[UploadFile] = File(None),  # Optional image files
+    payload: dict = Depends(verify_jwt),
 ):
-    return await add_product(payload, product_data)
+    return await add_product(payload, product_data, files)
 
 
 @Products_Router.put("/update", status_code=status.HTTP_200_OK)
 async def update_product_endpoint(
-    product_data: UpdateProductSchema, payload: dict = Depends(verify_jwt)
+    product_data: UpdateProductSchema,
+    files: List[UploadFile] = File(None),  # Optional new images
+    payload: dict = Depends(verify_jwt),
 ):
-    """🔹 Updates a product (Admin Only)."""
-    return await update_product(payload, product_data)
+    return await update_product(payload, product_data, files)
 
 
 @Products_Router.put("/toggle-listing", status_code=status.HTTP_200_OK)
@@ -105,25 +108,3 @@ async def get_delisted_products_endpoint(
     return await delisted_product_search_engine.search_products(
         payload, limit=limit
     )
-
-
-@Products_Router.patch(
-    "/admin/upload-images/{product_id}", status_code=status.HTTP_200_OK
-)
-async def upload_product_images_endpoint(
-    product_id: str,
-    files: List[UploadFile] = File(...),
-    payload: dict = Depends(verify_jwt),
-):
-    """🔹 Uploads images for a product (PATCH: replaces existing images if folder exists)."""
-    return await upload_product_images(product_id, payload, files)
-
-
-@Products_Router.delete(
-    "/admin/remove-images/{product_id}", status_code=status.HTTP_200_OK
-)
-async def remove_product_images_endpoint(
-    product_id: str, payload: dict = Depends(verify_jwt)
-):
-    """🔹 Removes all images for a product."""
-    return await remove_product_images(product_id, payload)

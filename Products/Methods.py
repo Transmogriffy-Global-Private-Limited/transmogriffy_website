@@ -15,7 +15,7 @@ import re
 import numpy as np
 from collections import defaultdict
 from vptree import VPTree
-from typing import List
+from typing import List, Optional
 import os
 import shutil
 from decouple import config
@@ -33,88 +33,52 @@ async def verify_admin(payload: dict):
     return admin
 
 
-async def add_product(payload: dict, product_data: AddProductSchema) -> dict:
-    """Creates a new product (Admin only)."""
+async def add_product(
+    payload: dict,
+    product_data: AddProductSchema,
+    files: List[UploadFile] = None,
+) -> dict:
+    """Creates a new product with optional images (Admin only)."""
     await verify_admin(payload)
-    product = await Product.create(
-        id=uuid.uuid4(), **product_data.model_dump()
-    )
-    return product_data.model_dump() | {"id": str(product.id)}
+
+    # ✅ Create Product in DB
+    product_id = str(uuid.uuid4())
+    product = await Product.create(id=product_id, **product_data.model_dump())
+
+    # ✅ Handle Images if provided
+    if files:
+        product_path = get_product_media_path(product_id)
+
+        # Ensure directory exists
+        os.makedirs(product_path, exist_ok=True)
+
+        saved_files = []
+        for file in files:
+            content = await file.read()
+
+            # ✅ Enforce size limit
+            if len(content) > config("MAXIMUM_FILE_SIZE"):
+                max_size_mb = int(config("MAXIMUM_FILE_SIZE")) * (1024 * 1024)
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"File {file.filename} exceeds size limit {max_size_mb} MB",
+                )
+
+            # ✅ Save file
+            file_path = os.path.join(product_path, file.filename)
+            with open(file_path, "wb") as buffer:
+                buffer.write(content)
+            saved_files.append(file.filename)
+
+    return product_data.model_dump() | {
+        "id": product_id,
+        "images": saved_files if files else [],
+    }
 
 
 def get_product_media_path(product_id: str) -> str:
     """Returns the full media path for a given product."""
     return os.path.join(config("PRODUCTS_MEDIA_PATH"), product_id)
-
-
-async def upload_product_images(
-    product_id: str,
-    payload: dict,
-    files: List[UploadFile] = File(...),
-):
-    """🔹 Uploads multiple images for a product (PATCH: replaces existing images if folder exists)."""
-    await verify_admin(payload)  # ✅ Ensure only admins can upload
-
-    # ✅ Check if product exists
-    product = await Product.get_or_none(id=product_id)
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-
-    # ✅ Compute product media directory
-    product_path = get_product_media_path(product_id)
-
-    # ✅ If folder exists and is not empty, delete existing files
-    if (
-        os.path.exists(product_path)
-        and os.path.isdir(product_path)
-        and os.listdir(product_path)
-    ):
-        shutil.rmtree(
-            product_path
-        )  # Delete old images before uploading new ones
-
-    # ✅ Ensure new directory exists
-    os.makedirs(product_path, exist_ok=True)
-
-    saved_files = []
-    for file in files:
-        # ✅ Enforce file size limit
-        if file.size > config("MAXIMUM_FILE_SIZE"):
-            mfz = config("MAXIMUM_FILE_SIZE")
-            raise HTTPException(
-                status_code=413,
-                detail=f"File {file.filename} exceeds size limit {mfz} MB",
-            )
-
-        # ✅ Save new file
-        file_path = os.path.join(product_path, file.filename)
-        with open(file_path, "wb") as buffer:
-            buffer.write(await file.read())
-        saved_files.append(file.filename)
-
-    return {"message": "Images uploaded successfully", "files": saved_files}
-
-
-async def remove_product_images(product_id: str, payload: dict):
-    """🔹 Removes all images for a product (Deletes the product's folder)."""
-    await verify_admin(payload)  # ✅ Ensure only admins can delete
-
-    # ✅ Ensure product exists
-    product = await Product.get_or_none(id=product_id)
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-
-    # ✅ Compute folder path
-    product_path = get_product_media_path(product_id)
-
-    # ✅ Check if folder exists
-    if os.path.exists(product_path) and os.path.isdir(product_path):
-        shutil.rmtree(product_path)  # Deletes entire folder
-        return {"message": "All product images deleted successfully"}
-
-    raise HTTPException(
-        status_code=404, detail="No images found for this product"
-    )
 
 
 def get_product_images(product_id: str) -> list:
@@ -204,21 +168,89 @@ async def get_all_products() -> List[ProductResponse]:
 
 
 async def update_product(
-    payload: dict, product_data: UpdateProductSchema
+    payload: dict,
+    product_data: UpdateProductSchema,
+    files: Optional[List[UploadFile]] = None,  # Optional images to ADD
+    removed_images: Optional[List[str]] = None,  # Optional images to REMOVE
 ) -> dict:
-    """Updates an existing product (Admin only)."""
+    """Updates an existing product with optional image additions and deletions (Admin only)."""
     await verify_admin(payload)
+
     try:
+        # ✅ Fetch product
         product = await Product.get(id=product_data.product_id)
-        update_data = product_data.model_dump(exclude_unset=True)
+
+        # ✅ Update product fields dynamically
+        update_data = product_data.model_dump(
+            exclude_unset=True, exclude={"product_id"}
+        )
         for field, value in update_data.items():
             setattr(product, field, value)
         await product.save()
-        return update_data | {"id": str(product.id)}
+
+        product_path = get_product_media_path(product_data.product_id)
+        updated_images = []
+
+        # ------------------- IMAGE REMOVAL LOGIC -------------------
+
+        if removed_images:
+            if os.path.exists(product_path) and os.path.isdir(product_path):
+                for filename in removed_images:
+                    image_path = os.path.join(product_path, filename)
+                    if os.path.isfile(image_path):
+                        os.remove(image_path)
+                # ✅ If folder is empty after deletion, remove it
+                if not os.listdir(product_path):
+                    shutil.rmtree(product_path)
+                    updated_images = "All images removed; folder deleted"
+                else:
+                    updated_images = [
+                        f
+                        for f in os.listdir(product_path)
+                        if os.path.isfile(os.path.join(product_path, f))
+                    ]
+
+        # ------------------- IMAGE ADDITION LOGIC -------------------
+
+        if files:
+            os.makedirs(
+                product_path, exist_ok=True
+            )  # Ensure folder exists if adding files
+
+            for file in files:
+                content = await file.read()
+
+                # ✅ Enforce size limit
+                if len(content) > config("MAXIMUM_FILE_SIZE"):
+                    max_size_mb = int(config("MAXIMUM_FILE_SIZE")) * (
+                        1024 * 1024
+                    )
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"File {file.filename} exceeds size limit {max_size_mb} MB",
+                    )
+
+                # ✅ Save new file
+                file_path = os.path.join(product_path, file.filename)
+                with open(file_path, "wb") as buffer:
+                    buffer.write(content)
+
+            # ✅ Final updated image list (after addition)
+            updated_images = [
+                f
+                for f in os.listdir(product_path)
+                if os.path.isfile(os.path.join(product_path, f))
+            ]
+
+        # ------------------- If only removal and folder gone -------------------
+        if not files and not os.path.exists(product_path):
+            updated_images = "No images available (folder deleted)"
+
+        # ✅ Final response
+        return update_data | {"id": str(product.id), "images": updated_images}
+
     except DoesNotExist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"
-        )
+        raise HTTPException(status_code=404, detail="Product not found")
 
 
 async def toggle_product_listing(
