@@ -15,6 +15,9 @@ from typing import Optional
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
+import json
+from fastapi import Form, HTTPException
+from pydantic import ValidationError, BaseModel
 
 
 async def get_token_from_authorization_header_value(
@@ -285,3 +288,46 @@ async def parse_limit_to_years(limit: Optional[str]) -> list:
 
     except ValueError as e:
         raise ValueError(f"Invalid limit format or year range: {e}")
+
+
+class ParsetoJSONObject:
+    """
+    Parses raw JSON string from form-data field into a validated Pydantic model instance.
+
+    Can handle deeply nested Pydantic schemas.
+
+    Usage:
+        product_data: ParsetoJSONObject = Depends()
+        model_instance = product_data.as_model(YourSchemaHere)
+    """
+
+    def __init__(self, product_data: str = Form(...)):
+        self.raw_json_data = product_data
+
+    def as_model(self, schema: BaseModel):
+        """
+        Converts raw JSON string into a Pydantic model instance.
+
+        Args:
+            schema (BaseModel): The Pydantic model class for validation.
+
+        Returns:
+            An instance of the provided Pydantic schema with validated data.
+
+        Raises:
+            HTTPException: 422 if JSON parsing or schema validation fails.
+        """
+        try:
+            # ✅ Parse the raw JSON string to dict (basic validation)
+            json_obj = json.loads(self.raw_json_data)
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=422, detail=f"Invalid JSON format: {str(e)}"
+            )
+
+        try:
+            # ✅ Validate using provided Pydantic model (deep/nested validation)
+            return schema.model_validate(json_obj)
+        except ValidationError as e:
+            # ⚙️ Relay Pydantic validation errors
+            raise HTTPException(status_code=422, detail=e.errors())

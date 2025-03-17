@@ -7,7 +7,7 @@ from fastapi import (
     Query,
     UploadFile,
 )
-from Utility_Methods.Utility_Methods import verify_jwt
+from Utility_Methods.Utility_Methods import verify_jwt, ParsetoJSONObject
 from Products.Methods import (
     add_product,
     update_product,
@@ -33,19 +33,25 @@ delisted_product_search_engine = DelistedProductSearchEngine()
 
 @Products_Router.post("/add", status_code=status.HTTP_201_CREATED)
 async def add_product_endpoint(
-    product_data: AddProductSchema,
-    files: List[UploadFile] = File(None),  # Optional image files
+    product_data_form: ParsetoJSONObject = Depends(),
+    files: List[UploadFile] = File(None),
     payload: dict = Depends(verify_jwt),
 ):
+    # ✅ Parse and validate product data with nested details
+    product_data = product_data_form.as_model(AddProductSchema)
     return await add_product(payload, product_data, files)
 
 
 @Products_Router.put("/update", status_code=status.HTTP_200_OK)
 async def update_product_endpoint(
-    product_data: UpdateProductSchema,
-    files: List[UploadFile] = File(None),  # Optional new images
+    product_data_form: ParsetoJSONObject = Depends(),  # product_data as JSON string in form-data
+    files: List[UploadFile] = File(None),  # Optional images to add
     payload: dict = Depends(verify_jwt),
 ):
+    # ✅ Parse the entire product_data (including removed_images)
+    product_data = product_data_form.as_model(UpdateProductSchema)
+
+    # ✅ Pass everything to business logic
     return await update_product(payload, product_data, files)
 
 
