@@ -81,6 +81,7 @@ class AddProductSchema(BaseModel):
 
 
 class UpdateProductSchema(BaseModel):
+    product_id: str
     name: Optional[str] = None
     model: Optional[str] = None
     details: Optional[ProductDetailsSchema] = None
@@ -110,7 +111,7 @@ class ProductResponse(BaseModel):
     id: str
     name: str
     model: str
-    details: ProductDetailsSchema
+    details: dict
     is_listed: bool
     image_paths: List[str]
     quantity: int

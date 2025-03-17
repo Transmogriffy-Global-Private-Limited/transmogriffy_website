@@ -174,7 +174,7 @@ async def update_product(
 ) -> dict:
     """Updates an existing product with optional image additions and deletions (Admin only)."""
     await verify_admin(payload)
-    removed_images = UpdateProductSchema.removed_images
+    removed_images = product_data.removed_images
     try:
         # ✅ Fetch product
         product = await Product.get(id=product_data.product_id)
