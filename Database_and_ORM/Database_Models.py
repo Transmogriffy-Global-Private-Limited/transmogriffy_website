@@ -1,3 +1,4 @@
+from sqlalchemy import null
 from tortoise import fields
 from tortoise.models import Model
 from Users.Data_Schemas import RoleEnum, OTPTypeEnum, AddressTypeEnum
@@ -169,6 +170,7 @@ class Product(Model):
     details = fields.JSONField(description="Additional Product Details")
     quantity = fields.IntField(default=1)
     is_listed = fields.BooleanField(default=True)
+    price = fields.FloatField(null = False)
 
     class Meta:
         table = "product"
