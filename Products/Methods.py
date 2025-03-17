@@ -171,11 +171,10 @@ async def update_product(
     payload: dict,
     product_data: UpdateProductSchema,
     files: Optional[List[UploadFile]] = None,  # Optional images to ADD
-    removed_images: Optional[List[str]] = None,  # Optional images to REMOVE
 ) -> dict:
     """Updates an existing product with optional image additions and deletions (Admin only)."""
     await verify_admin(payload)
-
+    removed_images = UpdateProductSchema.removed_images
     try:
         # ✅ Fetch product
         product = await Product.get(id=product_data.product_id)
