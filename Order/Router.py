@@ -21,7 +21,7 @@ async def order_endpoint(order_data: OrderSchema):
 @order_router.post("/orderhistory", status_code=status.HTTP_200_OK)
 async def get_order_history(request: StandAloneUserId):
     try:
-        order_history_data = await order_history(request.userid)
+        order_history_data = await order_history(request.user_id)
         return order_history_data
     except Exception as e:
         raise HTTPException(

@@ -13,4 +13,4 @@ class OrderSchema(BaseModel):
 
 
 class StandAloneUserId(BaseModel):
-    userid: Optional[str] = None
+    user_id: Optional[str] = None

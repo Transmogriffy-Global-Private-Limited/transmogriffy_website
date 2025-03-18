@@ -34,12 +34,12 @@ async def order_create(payload: dict, order_data: OrderSchema):
         )
 
 
-async def order_history(userid: str):
+async def order_history(user_id: str):
 
     try:
 
-        orders = await Order.filter(userid=userid)
-
+        orders = await Order.filter(userid=user_id)
+        
         order_history_with_products = []
 
         for order in orders:
