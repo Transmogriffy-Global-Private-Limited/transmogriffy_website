@@ -41,38 +41,37 @@ async def add_product(
     """Creates a new product with optional images (Admin only)."""
     await verify_admin(payload)
 
-    # ✅ Create Product in DB
-    product_id = str(uuid.uuid4())
-    product = await Product.create(id=product_id, **product_data.model_dump())
+    product_id = str(uuid.uuid4())  # ✅ Generate product ID
+    image_paths = []  # ✅ Prepare image paths list
 
-    # ✅ Handle Images if provided
+    # ✅ Handle Images first so we have image paths ready before DB insert
     if files:
         product_path = get_product_media_path(product_id)
+        os.makedirs(product_path, exist_ok=True)  # ✅ Ensure directory exists
 
-        # Ensure directory exists
-        os.makedirs(product_path, exist_ok=True)
-
-        saved_files = []
         for file in files:
             content = await file.read()
-
-            # # ✅ Enforce size limit
-            # if len(content) > int (config("MAXIMUM_FILE_SIZE")):
-            #     max_size_mb = int(config("MAXIMUM_FILE_SIZE")) * (1024 * 1024)
-            #     raise HTTPException(
-            #         status_code=413,
-            #         detail=f"File {file.filename} exceeds size limit {max_size_mb} MB",
-            #     )
 
             # ✅ Save file
             file_path = os.path.join(product_path, file.filename)
             with open(file_path, "wb") as buffer:
                 buffer.write(content)
-            saved_files.append(file.filename)
 
+            # ✅ Add relative, normalized path for DB
+            relative_path = file_path.replace("\\", "/")
+            image_paths.append(relative_path)
+
+    # ✅ Create Product with all data and imagePaths in one go
+    product = await Product.create(
+        id=product_id,
+        **product_data.model_dump(),  # ✅ Add other product fields
+        imagePath=image_paths,  # ✅ Add image paths directly
+    )
+
+    # ✅ Final response
     return product_data.model_dump() | {
         "id": product_id,
-        "images": saved_files if files else [],
+        "imagePath": image_paths,  # ✅ What is stored in DB
     }
 
 
@@ -107,7 +106,7 @@ async def get_product(product_id: uuid) -> dict:
             "model": product.model,
             "details": product.details,
             "is_listed": product.is_listed,
-            "image_paths": image_paths,
+            "image_paths": product.imagePath,
             "quantity": product.quantity,
             "price": product.price,
         }
@@ -148,7 +147,7 @@ async def get_all_products() -> List[ProductResponse]:
                     model=product.model,
                     details=product.details,
                     is_listed=product.is_listed,
-                    image_paths=image_paths,
+                    image_paths=product.imagePath,
                     quantity=product.quantity,
                     price=product.price,
                 )
@@ -174,79 +173,69 @@ async def update_product(
 ) -> dict:
     """Updates an existing product with optional image additions and deletions (Admin only)."""
     await verify_admin(payload)
-    removed_images = product_data.removed_images
+
     try:
         # ✅ Fetch product
         product = await Product.get(id=product_data.product_id)
 
-        # ✅ Update product fields dynamically
-        update_data = product_data.model_dump(
-            exclude_unset=True, exclude={"product_id"}
-        )
-        for field, value in update_data.items():
-            setattr(product, field, value)
-        await product.save()
-
         product_path = get_product_media_path(product_data.product_id)
-        updated_images = []
+        os.makedirs(
+            product_path, exist_ok=True
+        )  # Ensure directory exists in case we add files
+
+        # ✅ Start with existing image paths
+        current_images = product.imagePath or []
 
         # ------------------- IMAGE REMOVAL LOGIC -------------------
+        removed_images = product_data.removed_images or []
+        updated_image_paths = [
+            path
+            for path in current_images
+            if os.path.basename(path) not in removed_images
+        ]  # ✅ Keep only those not removed
 
         if removed_images:
-            if os.path.exists(product_path) and os.path.isdir(product_path):
-                for filename in removed_images:
-                    image_path = os.path.join(product_path, filename)
-                    if os.path.isfile(image_path):
-                        os.remove(image_path)
-                # ✅ If folder is empty after deletion, remove it
-                if not os.listdir(product_path):
-                    shutil.rmtree(product_path)
-                    updated_images = "All images removed; folder deleted"
-                else:
-                    updated_images = [
-                        f
-                        for f in os.listdir(product_path)
-                        if os.path.isfile(os.path.join(product_path, f))
-                    ]
+            for filename in removed_images:
+                image_path = os.path.join(product_path, filename)
+                if os.path.isfile(image_path):
+                    os.remove(image_path)  # ✅ Physically delete file
+
+            # ✅ If folder is empty after deletion, remove folder
+            if not os.listdir(product_path):
+                shutil.rmtree(product_path)
 
         # ------------------- IMAGE ADDITION LOGIC -------------------
-
         if files:
-            os.makedirs(
-                product_path, exist_ok=True
-            )  # Ensure folder exists if adding files
-
             for file in files:
                 content = await file.read()
-
-                # ✅ Enforce size limit
-                # if len(content) > config("MAXIMUM_FILE_SIZE"):
-                #     max_size_mb = int(config("MAXIMUM_FILE_SIZE")) * (
-                #         1024 * 1024
-                #     )
-                #     raise HTTPException(
-                #         status_code=413,
-                #         detail=f"File {file.filename} exceeds size limit {max_size_mb} MB",
-                #     )
 
                 # ✅ Save new file
                 file_path = os.path.join(product_path, file.filename)
                 with open(file_path, "wb") as buffer:
                     buffer.write(content)
 
-            # ✅ Final updated image list (after addition)
-            updated_images = [
-                f
-                for f in os.listdir(product_path)
-                if os.path.isfile(os.path.join(product_path, f))
-            ]
+                # ✅ Add normalized relative path to imagePath
+                relative_path = file_path.replace("\\", "/")
+                updated_image_paths.append(
+                    relative_path
+                )  # ✅ Add to updated paths
 
-        # ------------------- If only removal and folder gone -------------------
-        if not files and not os.path.exists(product_path):
-            updated_images = "No images available (folder deleted)"
+        # ✅ Now, update product fields dynamically (excluding product_id and removed_images)
+        update_data = product_data.model_dump(
+            exclude_unset=True, exclude={"product_id", "removed_images"}
+        )
 
-        # ✅ Final response
-        return update_data | {"id": str(product.id), "images": updated_images}
+        # ✅ Add updated imagePath to update_data to update in single DB call
+        update_data["imagePath"] = updated_image_paths
+
+        # ✅ Perform final update in DB in one shot (atomic update)
+        await Product.filter(id=product_data.product_id).update(**update_data)
+
+        # ✅ Final return
+        return {
+            "id": str(product.id),
+            **update_data,  # ✅ Includes updated fields and imagePath
+        }
 
     except DoesNotExist:
         raise HTTPException(status_code=404, detail="Product not found")

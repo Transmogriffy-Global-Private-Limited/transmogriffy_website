@@ -171,6 +171,7 @@ class Product(Model):
     quantity = fields.IntField(default=1)
     is_listed = fields.BooleanField(default=True)
     price = fields.FloatField(null=False)
+    imagePath = fields.JSONField()
 
     class Meta:
         table = "product"

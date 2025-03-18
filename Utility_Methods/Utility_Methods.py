@@ -98,8 +98,7 @@ async def verify_jwt(authorization: str = Header(None)):
 
     try:
         token = await get_token_from_authorization_header_value(authorization)
-        decrypted_token = await decrypt_jwt(token)
-        payload = await decode_jwt(decrypted_token)
+        payload = await decode_jwt(token)
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -139,8 +138,7 @@ async def create_jwt(user_id: str, expiration_duration: int) -> str:
         + timedelta(minutes=expiration_duration),  # Token valid for 1 day
     }
     token = jwt.encode(payload, config("JWT_SECRET_STRING"), algorithm="HS256")
-    encrypted_token = await encrypt_jwt(token)
-    return encrypted_token
+    return token
 
 
 async def verify_otp(
