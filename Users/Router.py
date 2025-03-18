@@ -80,7 +80,7 @@ async def login_user(response: Response, login_data: LoginData):
         return {
             "message": f"User {user.name} has successfully logged in",
             "User_Type": "User",
-            "ID": f"{user.id}",
+            "userid": f"{user.id}",
         }
     except HTTPException as e:
         raise e
@@ -168,7 +168,7 @@ async def verify_2fa_login_endpoint(
     return {
         "message": f"2FA verification successful. User {user.name} is now logged in.",
         "User_Type": "User",
-        "ID": f"{user.id}",
+        "userid": f"{user.id}",
     }
 
 
