@@ -10,7 +10,7 @@ from Database_and_ORM.Database_Models import Order, Cart, Product
 
 
 async def order_create(payload: dict, order_data: OrderSchema):
-    userid = order_data.userid
+    userid = order_data.user_id
     productid = order_data.productid
     order_quantity = order_data.order_quantity
     totalamount = order_data.totalamount

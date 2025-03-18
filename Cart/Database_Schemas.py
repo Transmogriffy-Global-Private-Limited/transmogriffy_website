@@ -5,7 +5,7 @@ from typing import List, Optional
 
 
 class CartSchema(BaseModel):
-    userid: Optional[str] = None
+    user_id: Optional[str] = None
     productid: Optional[str] = None
     price: Optional[str] = None
 

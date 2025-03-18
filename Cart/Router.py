@@ -39,7 +39,7 @@ async def increase_quantity_endpoint(
         )
 
 
-@cart_router.post("/decreasequantity", status_code=status.HTTP_200_OK)
+@cart_router.post("/decreasemethods", status_code=status.HTTP_200_OK)
 async def decrease_quantity_endpoint(
     management_data: ManagementQuantity,
 ):
