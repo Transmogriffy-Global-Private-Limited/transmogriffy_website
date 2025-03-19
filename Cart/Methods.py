@@ -15,7 +15,7 @@ async def add_to_cart(payload: Dict, cart_data: CartSchema):
 
     userid = cart_data.user_id
     productid = cart_data.productid
-    price = cart_data.price
+    price = float(cart_data.price)
 
     try:
         new_cart_entry = await Cart.create(
