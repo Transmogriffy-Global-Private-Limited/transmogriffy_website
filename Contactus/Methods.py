@@ -17,10 +17,10 @@ async def savecontact(payload:dict,payload_data:ContactSchema):
             contactno = contactno,
             message =  message
         )
-        to = email
+        to = 'transmogrify13@outlook.com'
         subject = 'Received successfully'
-        message =  f'Hi {name} We have received your message we will be in touch with you shortly'
-        email_sender(to,subject,message)
+        text =  f'Contact details  Username - {name} user_email={email} contact_phoneno - {contactno} contact reason - message - {message} '
+        email_sender(to,subject,text)
         return new_contact
     except Exception as e:
         raise HTTPException(
