@@ -199,7 +199,8 @@ class Cart(Model):
     id = fields.UUIDField(pk=True)
     userid = fields.CharField(default=None, max_length=600)
     productid = fields.CharField(default=None, max_length=600)
-    price = fields.CharField(default=None, max_length=600)
+    quantity = fields.IntField(default=None,max_length=600)
+    price = fields.IntField(default=None, max_length=600)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 

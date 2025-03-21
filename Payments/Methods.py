@@ -26,7 +26,7 @@ razorpay_client = razorpay.Client(auth=(razorpaykey, razorpaysecret))
 
 async def razorpayfn(payload: dict, payment_schema: PaymentSchema):
 
-    userid = payment_schema.userid
+    userid = payment_schema.user_id
     productid = payment_schema.paymentid
     price = payment_schema.price
 
@@ -90,7 +90,7 @@ async def razorpayfn(payload: dict, payment_schema: PaymentSchema):
 
 
 async def verifypayment(payload: dict, verify_payment: Transactions):
-    userid = verify_payment.userid
+    userid = verify_payment.user_id
     productid = verify_payment.productid
     razorpaypamentid = verify_payment.razorpaypaymentid
     price = verify_payment.price
@@ -113,7 +113,7 @@ async def verifypayment(payload: dict, verify_payment: Transactions):
 async def transaction_history(
     payload: dict, management_data: TransactionsHistoryUser
 ):
-    userid = management_data.userid
+    userid = management_data.user_id
     try:
         thus = await Transactions.get(userid=userid)
         transactionshistory = []

@@ -24,7 +24,7 @@ async def add_to_cart_endpoint(
             detail=f"Failed to add to cart: {str(e)}",
         )
 
-
+# increase the quantity of the product
 @cart_router.post("/increasequantity", status_code=status.HTTP_200_OK)
 async def increase_quantity_endpoint(
     management_data: ManagementQuantity,
@@ -38,8 +38,8 @@ async def increase_quantity_endpoint(
             detail=f"Failed to increase quantity: {str(e)}",
         )
 
-
-@cart_router.post("/decreasequantity", status_code=status.HTTP_200_OK)
+#decrease quantity of the product
+@cart_router.post("/decreasemethods", status_code=status.HTTP_200_OK)
 async def decrease_quantity_endpoint(
     management_data: ManagementQuantity,
 ):

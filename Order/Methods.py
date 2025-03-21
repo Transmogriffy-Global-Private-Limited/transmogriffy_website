@@ -10,7 +10,7 @@ from Database_and_ORM.Database_Models import Order, Cart, Product
 
 
 async def order_create(payload: dict, order_data: OrderSchema):
-    userid = order_data.userid
+    userid = order_data.user_id
     productid = order_data.productid
     order_quantity = order_data.order_quantity
     totalamount = order_data.totalamount
@@ -34,12 +34,12 @@ async def order_create(payload: dict, order_data: OrderSchema):
         )
 
 
-async def order_history(userid: str):
+async def order_history(user_id: str):
 
     try:
 
-        orders = await Order.filter(userid=userid)
-
+        orders = await Order.filter(userid=user_id)
+        
         order_history_with_products = []
 
         for order in orders:
