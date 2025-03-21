@@ -273,9 +273,7 @@ async def get_delisted_products(payload: dict, limit: str) -> dict:
                 "details": product.details,
                 "is_listed": product.is_listed,
                 "price": product.price,
-                "image_paths": get_product_images(
-                    str(product.id)
-                ),  # ✅ Fetch image paths
+                "image_paths": product.images,
             }
             for product in products
         ],
