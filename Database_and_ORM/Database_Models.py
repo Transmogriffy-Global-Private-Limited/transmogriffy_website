@@ -15,7 +15,7 @@ class User(Model):
     role = fields.CharEnumField(RoleEnum, default=RoleEnum.user)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
-    profile_picture_path = fields.CharField(max_length=255, null=True)
+    profile_picture = fields.BinaryField(null=True)
 
     class Meta:
         table = "User"
@@ -171,7 +171,7 @@ class Product(Model):
     quantity = fields.IntField(default=1)
     is_listed = fields.BooleanField(default=True)
     price = fields.FloatField(null=False)
-    imagePath = fields.JSONField()
+    images = fields.TextField(null=True)
 
     class Meta:
         table = "product"

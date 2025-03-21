@@ -1,6 +1,7 @@
 import uuid
 from fastapi import HTTPException, status, File, UploadFile
 from tortoise.exceptions import DoesNotExist
+import base64
 from Database_and_ORM.Database_Models import (
     Product,
     Admin,
@@ -41,37 +42,31 @@ async def add_product(
     """Creates a new product with optional images (Admin only)."""
     await verify_admin(payload)
 
-    product_id = str(uuid.uuid4())  # ✅ Generate product ID
-    image_paths = []  # ✅ Prepare image paths list
+    product_id = str(uuid.uuid4())
+    image_data_list = []
+    image_names = []
 
-    # ✅ Handle Images first so we have image paths ready before DB insert
     if files:
-        product_path = get_product_media_path(product_id)
-        os.makedirs(product_path, exist_ok=True)  # ✅ Ensure directory exists
-
         for file in files:
             content = await file.read()
 
-            # ✅ Save file
-            file_path = os.path.join(product_path, file.filename)
-            with open(file_path, "wb") as buffer:
-                buffer.write(content)
+            # Detect MIME
+            mime_type = file.content_type or "image/png"
+            base64_data = base64.b64encode(content).decode("utf-8")
+            full_data_uri = f"data:{mime_type};base64,{base64_data}"
 
-            # ✅ Add relative, normalized path for DB
-            relative_path = file_path.replace("\\", "/")
-            image_paths.append(relative_path)
+            image_data_list.append(
+                {"filename": file.filename, "data": full_data_uri}
+            )
+            image_names.append(file.filename)
 
-    # ✅ Create Product with all data and imagePaths in one go
     product = await Product.create(
-        id=product_id,
-        **product_data.model_dump(),  # ✅ Add other product fields
-        imagePath=image_paths,  # ✅ Add image paths directly
+        id=product_id, **product_data.model_dump(), images=image_data_list
     )
 
-    # ✅ Final response
     return product_data.model_dump() | {
         "id": product_id,
-        "imagePath": image_paths,  # ✅ What is stored in DB
+        "imagePath": image_names,  # Just return names, as requested
     }
 
 
@@ -106,7 +101,7 @@ async def get_product(product_id: uuid) -> dict:
             "model": product.model,
             "details": product.details,
             "is_listed": product.is_listed,
-            "image_paths": product.imagePath,
+            "image_paths": product.images,
             "quantity": product.quantity,
             "price": product.price,
         }
@@ -147,7 +142,7 @@ async def get_all_products() -> List[ProductResponse]:
                     model=product.model,
                     details=product.details,
                     is_listed=product.is_listed,
-                    image_paths=product.imagePath,
+                    image_paths=product.images,
                     quantity=product.quantity,
                     price=product.price,
                 )
@@ -175,66 +170,45 @@ async def update_product(
     await verify_admin(payload)
 
     try:
-        # ✅ Fetch product
         product = await Product.get(id=product_data.product_id)
-
-        product_path = get_product_media_path(product_data.product_id)
-        os.makedirs(
-            product_path, exist_ok=True
-        )  # Ensure directory exists in case we add files
-
-        # ✅ Start with existing image paths
-        current_images = product.imagePath or []
+        current_images = product.images or []
 
         # ------------------- IMAGE REMOVAL LOGIC -------------------
-        removed_images = product_data.removed_images or []
-        updated_image_paths = [
-            path
-            for path in current_images
-            if os.path.basename(path) not in removed_images
-        ]  # ✅ Keep only those not removed
-
-        if removed_images:
-            for filename in removed_images:
-                image_path = os.path.join(product_path, filename)
-                if os.path.isfile(image_path):
-                    os.remove(image_path)  # ✅ Physically delete file
-
-            # ✅ If folder is empty after deletion, remove folder
-            if not os.listdir(product_path):
-                shutil.rmtree(product_path)
+        removed_images = set(product_data.removed_images or [])
+        updated_images = [
+            img
+            for img in current_images
+            if img["filename"] not in removed_images
+        ]
 
         # ------------------- IMAGE ADDITION LOGIC -------------------
         if files:
             for file in files:
                 content = await file.read()
 
-                # ✅ Save new file
-                file_path = os.path.join(product_path, file.filename)
-                with open(file_path, "wb") as buffer:
-                    buffer.write(content)
+                # Infer MIME
+                mime_type = file.content_type or "image/png"
+                base64_data = base64.b64encode(content).decode("utf-8")
+                full_data_uri = f"data:{mime_type};base64,{base64_data}"
 
-                # ✅ Add normalized relative path to imagePath
-                relative_path = file_path.replace("\\", "/")
-                updated_image_paths.append(
-                    relative_path
-                )  # ✅ Add to updated paths
+                updated_images.append(
+                    {"filename": file.filename, "data": full_data_uri}
+                )
 
-        # ✅ Now, update product fields dynamically (excluding product_id and removed_images)
+        # ------------------- DYNAMIC FIELD UPDATE -------------------
         update_data = product_data.model_dump(
             exclude_unset=True, exclude={"product_id", "removed_images"}
         )
+        update_data["images"] = updated_images
 
-        # ✅ Add updated imagePath to update_data to update in single DB call
-        update_data["imagePath"] = updated_image_paths
-
-        # ✅ Perform final update in DB in one shot (atomic update)
         await Product.filter(id=product_data.product_id).update(**update_data)
 
-        # ✅ Final return
         return {
             "id": str(product.id),
-            **update_data,  # ✅ Includes updated fields and imagePath
+            **update_data,
+            "imagePath": [
+                img["filename"] for img in updated_images
+            ],  # Maintain return contract
         }
 
     except DoesNotExist:

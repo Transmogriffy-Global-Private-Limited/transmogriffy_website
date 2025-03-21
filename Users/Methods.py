@@ -4,6 +4,7 @@ from Database_and_ORM.Database_Models import (
     OTP,
     Address,
 )
+import base64
 from Users.Data_Schemas import UserCreate, OTPTypeEnum, AddressTypeEnum
 from Comms.Methods import send_email, get_email_content
 from tortoise.exceptions import IntegrityError, DoesNotExist
@@ -291,7 +292,7 @@ async def generate_and_send_otp(email: str, purpose: OTPTypeEnum) -> dict:
 
 async def get_user_data(payload: dict) -> dict:
     """
-    Retrieves user data by user_id, excluding the password field.
+    Retrieves user data by user_id, excluding the password field and encoding the profile picture.
     """
     user_id = payload.get("user_id")
     user = await User.get_or_none(id=user_id)
@@ -301,7 +302,7 @@ async def get_user_data(payload: dict) -> dict:
             detail="User not found",
         )
 
-    # Convert user instance to a dictionary excluding private/internal attributes
+    # Convert user instance to dictionary, excluding private/internal fields
     user_data = {
         field: value
         for field, value in user.__dict__.items()
@@ -312,24 +313,26 @@ async def get_user_data(payload: dict) -> dict:
     user_data.pop("password", None)
     user_data.pop("id", None)
 
-    # Handle profile picture
-    if user_data.get("profile_picture_path"):
-        encoded_picture = await encode_path_to_base64(
-            user_data["profile_picture_path"]
-        )
-        if (
-            encoded_picture
-            == "Invalid path provided. Path is neither a file nor a directory, or doesn't exist."
-        ):
-            # If the path is invalid, remove the field
-            user_data.pop("profile_picture_path", None)
-        else:
-            # Otherwise, set the Base64-encoded string
-            user_data["profile_picture"] = encoded_picture
+    # Handle profile picture stored in BinaryField
+    binary_data = user.profile_picture
+    if binary_data:
+        try:
+            mime_type = "image/png"  # Fallback MIME
+            if binary_data.startswith(b"\xff\xd8"):
+                mime_type = "image/jpeg"
+            elif binary_data.startswith(b"\x89PNG"):
+                mime_type = "image/png"
+
+            encoded_picture = base64.b64encode(binary_data).decode("utf-8")
+            user_data["profile_picture"] = (
+                f"data:{mime_type};base64,{encoded_picture}"
+            )
+        except Exception as e:
+            user_data["profile_picture"] = None
     else:
         user_data["profile_picture"] = None
 
-    # Remove the path field to keep the response clean
+    # Remove legacy path field if it ever existed
     user_data.pop("profile_picture_path", None)
 
     return user_data
@@ -475,11 +478,6 @@ async def toggle_2fa_status(payload: dict, entered_password: str) -> str:
 
 async def upload_profile_picture(payload: dict, file: UploadFile) -> dict:
     user_id = payload.get("user_id")
-    directory = os.path.join(
-        f"{config('USER_MEDIA_PATH')}",
-        f"{config('USER_PROFILE_PICTURES_DIRECTORY')}",
-    )
-    os.makedirs(directory, exist_ok=True)
 
     if file.content_type not in [
         "image/jpeg",
@@ -491,30 +489,17 @@ async def upload_profile_picture(payload: dict, file: UploadFile) -> dict:
             detail="Only JPEG and PNG images are allowed.",
         )
 
-    # Check file size (limit 500kB)
-    file_size = await file.read()  # read content to check size
-    if len(file_size) > int(config("MAXIMUM_IMAGE_SIZE")) * 1024 * 1024:
+    # Check file size (limit 500kB or whatever is configured)
+    file_content = await file.read()
+    if len(file_content) > int(config("MAXIMUM_IMAGE_SIZE")) * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"File size should not exceed {config('MAXIMUM_IMAGE_SIZE')} mBs.",
         )
 
-    await file.seek(0)
-
-    # Create the file path
-    file_path = os.path.join(
-        directory,
-        f"{config('USER_PROFILE_PICTURE_PREFIX')}_{user_id}_{file.filename}",
-    )
-
-    # Save the file to the directory
-    with open(file_path, "wb") as buffer:
-        content = await file.read()
-        buffer.write(content)
-
-    # Update the user profile picture path in the database
+    # Update the user profile picture as binary blob in the database
     user = await User.get(id=user_id)
-    user.profile_picture_path = file_path
+    user.profile_picture = file_content
     await user.save()
 
     return {"message": "Profile picture uploaded successfully"}
@@ -533,20 +518,23 @@ async def get_profile_picture(payload: dict) -> dict:
             detail="User not found",
         )
 
-    # Check if user has a profile picture path
-    if not user.profile_picture_path:
+    # Check if user has a profile picture
+    if not user.profile_picture:
         return {"message": "No profile picture available."}
 
-    # Convert profile picture to Base64 using the utility method
     try:
-        profile_picture_base64 = await encode_path_to_base64(
-            user.profile_picture_path
-        )
-        if (
-            profile_picture_base64
-            == "Invalid path provided. Path is neither a file nor a directory, or doesn't exist."
-        ):
-            return {"profile_picture": None}
+        # Detect MIME type (basic inference, optionally improve later)
+        mime_type = "image/png"  # Default fallback
+        header = user.profile_picture[:10]
+
+        if header.startswith(b"\xff\xd8"):
+            mime_type = "image/jpeg"
+        elif header.startswith(b"\x89PNG"):
+            mime_type = "image/png"
+
+        # Encode image to base64 with MIME prefix
+        encoded_image = base64.b64encode(user.profile_picture).decode("utf-8")
+        profile_picture_base64 = f"data:{mime_type};base64,{encoded_image}"
 
     except Exception as e:
         raise HTTPException(

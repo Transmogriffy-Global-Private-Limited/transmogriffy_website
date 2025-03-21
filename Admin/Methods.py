@@ -559,6 +559,9 @@ async def get_admin_data(payload: dict) -> dict:
     return admin_data
 
 
+import base64
+
+
 async def view_user_data(
     payload: dict, user_id: str = None, limit: str = None
 ) -> list:
@@ -575,48 +578,49 @@ async def view_user_data(
             detail="Only admins are authorized to view user data.",
         )
 
+    async def enrich_user_data(user: dict) -> dict:
+        user.pop("password", None)
+
+        user_obj = await User.get_or_none(id=user.get("id"))
+        if user_obj and user_obj.profile_picture:
+            try:
+                mime_type = "image/png"
+                header = user_obj.profile_picture[:10]
+                if header.startswith(b"\xff\xd8"):
+                    mime_type = "image/jpeg"
+                elif header.startswith(b"\x89PNG"):
+                    mime_type = "image/png"
+
+                encoded_picture = base64.b64encode(
+                    user_obj.profile_picture
+                ).decode("utf-8")
+                user["profile_picture"] = (
+                    f"data:{mime_type};base64,{encoded_picture}"
+                )
+            except Exception:
+                user["profile_picture"] = None
+        else:
+            user["profile_picture"] = None
+
+        user.pop("profile_picture_path", None)
+        return user
+
     if user_id:
-        # Fetch data for a specific user as a dictionary
         user_list = await User.filter(id=user_id).values()
         if not user_list:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found",
             )
+        enriched_user = await enrich_user_data(user_list[0])
+        return [enriched_user]
 
-        user = user_list[
-            0
-        ]  # Get the first (and only) dictionary from the list
-        user.pop("password", None)
-
-        # Add profile picture in Base64 format if present and valid
-        if user.get("profile_picture_path"):
-            encoded_picture = await encode_path_to_base64(
-                user["profile_picture_path"]
-            )
-            if (
-                encoded_picture
-                == "Invalid path provided. Path is neither a file nor a directory, or doesn't exist."
-            ):
-                user.pop(
-                    "profile_picture_path", None
-                )  # Remove invalid path field
-            else:
-                user["profile_picture"] = encoded_picture
-
-        user.pop(
-            "profile_picture_path", None
-        )  # Ensure the path field is removed
-        return [user]
-
-    # Fetch paginated user data if no user_id is provided
     if not limit:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Limit parameter is required if user_id is not provided.",
         )
 
-    # Parse the limit parameter
     try:
         start, end = map(int, limit.split("-"))
     except ValueError:
@@ -625,7 +629,6 @@ async def view_user_data(
             detail="Limit parameter format is incorrect. Use 'start-end' format.",
         )
 
-    # Fetch users with pagination and ordering by updated_at in descending order
     users = (
         await User.all()
         .order_by("-updated_at")
@@ -634,29 +637,12 @@ async def view_user_data(
         .values()
     )
 
-    # Add profile pictures in Base64 format for each user
+    enriched_users = []
     for user in users:
-        if user.get("profile_picture_path"):
-            encoded_picture = await encode_path_to_base64(
-                user["profile_picture_path"]
-            )
-            if (
-                encoded_picture
-                == "Invalid path provided. Path is neither a file nor a directory, or doesn't exist."
-            ):
-                user.pop(
-                    "profile_picture_path", None
-                )  # Remove invalid path field
-            else:
-                user["profile_picture"] = encoded_picture
-        else:
-            user["profile_picture"] = None
+        enriched_user = await enrich_user_data(user)
+        enriched_users.append(enriched_user)
 
-        user.pop(
-            "profile_picture_path", None
-        )  # Ensure the path field is removed
-
-    return users
+    return enriched_users
 
 
 async def verify_email_otp(payload: dict, otp_code: str) -> bool:
