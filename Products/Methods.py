@@ -10,7 +10,6 @@ from Products.Data_Schemas import (
     AddProductSchema,
     UpdateProductSchema,
     ToggleProductListingSchema,
-    ProductResponse,
 )
 import re
 import numpy as np
@@ -112,12 +111,12 @@ async def get_product(product_id: uuid) -> dict:
         )
 
 
-async def get_all_products() -> List[ProductResponse]:
+async def get_all_products():
     """
     Retrieves all listed products within a specified range.
 
     Returns:
-        List[ProductResponse]: List of product data.
+        product.images: List of product data.
     """
     try:
 
@@ -134,18 +133,17 @@ async def get_all_products() -> List[ProductResponse]:
         # Build response
         product_list = []
         for product in products:
-            image_paths = get_product_images(product.id)  # Assuming async
             product_list.append(
-                ProductResponse(
-                    id=str(product.id),
-                    name=product.name,
-                    model=product.model,
-                    details=product.details,
-                    is_listed=product.is_listed,
-                    image_paths=product.images,
-                    quantity=product.quantity,
-                    price=product.price,
-                )
+                {
+                    "id": str(product.id),
+                    "name": product.name,
+                    "model": product.model,
+                    "details": product.details,
+                    "is_listed": product.is_listed,
+                    "image_paths": product.images,
+                    "quantity": product.quantity,
+                    "price": product.price,
+                }
             )
 
         return product_list
