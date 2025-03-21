@@ -200,7 +200,7 @@ class Cart(Model):
     userid = fields.CharField(default=None, max_length=600)
     productid = fields.CharField(default=None, max_length=600)
     quantity = fields.IntField(default=None,max_length=600)
-    price = fields.IntField(default=None, max_length=600)
+    price = fields.FloatField(default=None, max_length=600)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
@@ -239,5 +239,14 @@ class Transactions(Model):
     userid = fields.CharField(default=None, max_length=600)
     productid = fields.CharField(default=None, max_length=600)
     price = fields.CharField(default=None, max_length=655)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+class ContactUs(Model):
+    id = fields.UUIDField(pk=True)
+    name = fields.CharField(default=None, max_length=1200)
+    email = fields.CharField(default=None,max_length=1200)
+    contactno =  fields.CharField(default=None,max_length=1200)
+    message = fields.TextField(default=None)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
