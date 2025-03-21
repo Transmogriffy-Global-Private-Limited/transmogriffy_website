@@ -13,3 +13,6 @@ class CartSchema(BaseModel):
 class ManagementQuantity(BaseModel):
     quantity: Optional[int] = None
     productid: Optional[str] = None
+
+class GetCartOfauser(BaseModel):
+    user_id: Optional[str]=None

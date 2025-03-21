@@ -1,7 +1,7 @@
 import uuid
 from fastapi import HTTPException, status
 from Database_and_ORM.Database_Models import Cart, Product
-from .Database_Schemas import CartSchema, ManagementQuantity
+from .Database_Schemas import CartSchema, ManagementQuantity,GetCartOfauser
 from typing import Dict
 import logging
 
@@ -15,7 +15,7 @@ async def add_to_cart(payload: Dict, cart_data: CartSchema):
 
     userid = cart_data.user_id
     productid = cart_data.productid
-    price = cart_data.price
+    price = float(cart_data.price)
 
     try:
         new_cart_entry = await Cart.create(
@@ -31,6 +31,40 @@ async def add_to_cart(payload: Dict, cart_data: CartSchema):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to add to cart: {str(e)}",
         )
+
+async def get_cart(payload: Dict, management_data: GetCartOfauser):
+    userid = management_data.user_id
+    logger.debug(f"Fetching cart for user ID: {userid}")
+
+    try:
+        # Retrieve all cart entries for the given user
+        user_cart = await Cart.filter(userid=userid).all()
+        
+        if not user_cart:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No items found in the cart for this user",
+            )
+
+        # Convert the cart entries to a list of dictionaries for easier serialization
+        cart_items = [
+            {
+                "productid": item.productid,
+                "quantity": item.quantity,
+                "price": item.price,
+            }
+            for item in user_cart
+        ]
+        
+        return {"user_id": userid, "cart_items": cart_items}
+
+    except Exception as e:
+        logger.error(f"Error fetching cart: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve cart: {str(e)}",
+        )
+
 
 async def increase_quantity(payload: Dict, management_data: ManagementQuantity):
     productid = management_data.productid
