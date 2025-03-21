@@ -241,3 +241,12 @@ class Transactions(Model):
     price = fields.CharField(default=None, max_length=655)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
+
+class ContactUs(Model):
+    id = fields.UUIDField(pk=True)
+    name = fields.CharField(default=None, max_length=1200)
+    email = fields.CharField(default=None,max_length=1200)
+    contactno =  fields.CharField(default=None,max_length=1200)
+    message = fields.TextField(default=None)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
