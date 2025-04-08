@@ -205,7 +205,7 @@ async def update_product(
             "id": str(product.id),
             **update_data,
             "imagePath": [
-                img["filename"] for img in updated_images
+                img for img in updated_images
             ],  # Maintain return contract
         }
 
