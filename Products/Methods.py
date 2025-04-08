@@ -176,7 +176,7 @@ async def update_product(
         updated_images = [
             img
             for img in current_images
-            if img["filename"] not in removed_images
+            if img not in removed_images
         ]
 
         # ------------------- IMAGE ADDITION LOGIC -------------------
