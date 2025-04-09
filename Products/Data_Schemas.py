@@ -81,7 +81,7 @@ class AddProductSchema(BaseModel):
 
 
 class UpdateProductSchema(BaseModel):
-    product_id: str
+    id: str
     name: Optional[str] = None
     model: Optional[str] = None
     details: Optional[ProductDetailsSchema] = None
