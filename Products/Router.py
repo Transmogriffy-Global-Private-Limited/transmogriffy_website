@@ -14,7 +14,7 @@ from Products.Methods import (
     toggle_product_listing,
     get_product,
     get_all_products,
-)
+    get_delisted_products,)
 from Products.Methods import ProductSearchEngine, DelistedProductSearchEngine
 from Products.Data_Schemas import (
     AddProductSchema,
@@ -107,6 +107,6 @@ async def get_delisted_products_endpoint(
     payload: dict = Depends(verify_jwt),
 ):
     """🔹 Fetches all delisted products (Admin Only) with pagination support."""
-    return await delisted_product_search_engine.search_products(
+    return await get_delisted_products(
         payload, limit=limit
     )

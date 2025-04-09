@@ -399,7 +399,7 @@ class ProductSearchEngine:
         query_vector = np.array([len(query_tokens), 0])
 
         # Step 1: VP-Tree Nearest Neighbor Search (Uncapped)
-        nearest_neighbors = self.vp_tree.get_nearest_neighbors(
+        nearest_neighbors = self.vp_tree.get_nearest_neighbor(
             query_vector, 1000
         )  # Large limit to get all matches
 
@@ -548,7 +548,7 @@ class DelistedProductSearchEngine:
         query_vector = np.array([len(query_tokens), 0])
 
         # Step 1: VP-Tree Nearest Neighbor Search (Uncapped)
-        nearest_neighbors = self.vp_tree.get_nearest_neighbors(
+        nearest_neighbors = self.vp_tree.get_nearest_neighbor(
             query_vector, 1000
         )  # Large limit to get all matches
 
