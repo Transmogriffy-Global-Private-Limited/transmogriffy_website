@@ -35,7 +35,7 @@ class ProductDetailsSchema(BaseModel):
     height: float = Field(..., description="Height in meters")
     weight_in_kgs: float = Field(..., description="Weight in kilograms")
     noise_level: str = Field(..., description="Noise level (e.g., '55dB')")
-    effiiency_in_percentage: float = Field(
+    efficiency_in_percentage: float = Field(
         ...,
         alias="efficiency_in_percentage",
         description="Efficiency in percentage (e.g., 95.5)",
@@ -81,7 +81,7 @@ class AddProductSchema(BaseModel):
 
 
 class UpdateProductSchema(BaseModel):
-    product_id: str
+    id: str
     name: Optional[str] = None
     model: Optional[str] = None
     details: Optional[ProductDetailsSchema] = None

@@ -199,7 +199,7 @@ async def update_product(
         )
         update_data["images"] = updated_images
 
-        await Product.filter(id=product_data.product_id).update(**update_data)
+        await Product.filter(id=product_data.id).update(**update_data)
 
         return {
             "id": str(product.id),
