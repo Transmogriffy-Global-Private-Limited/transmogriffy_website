@@ -168,7 +168,7 @@ async def update_product(
     await verify_admin(payload)
 
     try:
-        product = await Product.get(id=product_data.product_id)
+        product = await Product.get(id=product_data.id)
         current_images = product.images or []
 
         # ------------------- IMAGE REMOVAL LOGIC -------------------
@@ -195,7 +195,7 @@ async def update_product(
 
         # ------------------- DYNAMIC FIELD UPDATE -------------------
         update_data = product_data.model_dump(
-            exclude_unset=True, exclude={"product_id", "removed_images"}
+            exclude_unset=True, exclude={"id", "removed_images"}
         )
         update_data["images"] = updated_images
 

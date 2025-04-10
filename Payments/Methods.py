@@ -27,7 +27,9 @@ razorpay_client = razorpay.Client(auth=(razorpaykey, razorpaysecret))
 async def razorpayfn(payload: dict, payment_schema: PaymentSchema):
 
     userid = payment_schema.user_id
-    productid = payment_schema.paymentid
+    print(userid)
+    productid = payment_schema.productid
+    print(productid)
     price = payment_schema.price
 
     try:
@@ -53,12 +55,14 @@ async def razorpayfn(payload: dict, payment_schema: PaymentSchema):
         }
 
         order = razorpay_client.order.create(data=order_data)
+        print(order)
         payment_data = {
             "userid": userid,
             "productid": productid,
             "order_id": order["id"],
             "price": order["amount"],
             "currency": order["currency"],
+            "paymentid":order["id"],
             "status": order["status"],
             "receipt": order["receipt"],
             "notes": order["notes"],

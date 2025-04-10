@@ -49,7 +49,7 @@ class ProductDetailsSchema(BaseModel):
             raise ValueError("fast_charger must be 'yes' or 'no'")
         return v_lower
 
-    @field_validator("effiiency_in_percentage")
+    @field_validator("efficiency_in_percentage")
     def validate_efficiency(cls, v):
         if not (0 <= v <= 100):
             raise ValueError(
