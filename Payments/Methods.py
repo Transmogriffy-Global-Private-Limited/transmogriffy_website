@@ -90,25 +90,30 @@ async def razorpayfn(payload: dict, payment_schema: PaymentSchema):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal server error occurred. Please try again later.",
         )
+
+
 async def verifypayment(payload: dict, verify_payment: Transactions):
     userid = verify_payment.user_id
     productid = verify_payment.productid
-    razorpaypamentid = verify_payment.razorpaypaymentid
+    razorpaypaymentid = verify_payment.razorpaypaymentid
     price = verify_payment.price
     try:
         payment_verification = await Transactions.create(
-            id=uuid.uuid4,
+            id=str(uuid.uuid4()),
             userid=userid,
             productid=productid,
-            razorpaypamentid=razorpaypamentid,
+            razorpaypaymentid=razorpaypaymentid,
             price=price,
         )
         return payment_verification
     except Exception as e:
+        print(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error occurred: {str(e)}",
         )
+
+
 
 
 async def transaction_history(
