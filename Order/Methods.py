@@ -16,6 +16,8 @@ async def order_create(payload: dict, order_data: OrderSchema):
     totalamount = order_data.totalamount
     paymentoption = order_data.paymentoption
     orderstatus = order_data.orderstatus
+    deliveryaddress = order_data.deliveryaddress
+    print(deliveryaddress)
     try:
         new_order_entry = await Order.create(
             id=uuid.uuid4(),
@@ -25,6 +27,7 @@ async def order_create(payload: dict, order_data: OrderSchema):
             totalamount=totalamount,
             paymentoption=paymentoption,
             orderstatus=orderstatus,
+            deliveryaddress=deliveryaddress
         )
         return new_order_entry
     except Exception as e:
@@ -32,6 +35,7 @@ async def order_create(payload: dict, order_data: OrderSchema):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create order: {str(e)}",
         )
+
 
 
 async def order_history(user_id: str):
@@ -54,6 +58,7 @@ async def order_history(user_id: str):
                 "total_amount": order.totalamount,
                 "payment_option": order.paymentoption,
                 "order_status": order.orderstatus,
+                "deliveryaddress": order.deliveryaddress
             }
 
             order_history_with_products.append(order_details)

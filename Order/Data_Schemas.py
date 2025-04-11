@@ -8,6 +8,7 @@ class OrderSchema(BaseModel):
     order_quantity: Optional[str] = None
     user_id: Optional[str] = None
     totalamount: Optional[str] = None
+    deliveryaddress: Optional[str] = None
     paymentoption: Optional[str] = None
     orderstatus: Optional[str] = None
 

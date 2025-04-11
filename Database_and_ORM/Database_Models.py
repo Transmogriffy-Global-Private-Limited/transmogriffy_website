@@ -207,7 +207,6 @@ class Cart(Model):
     class Meta:
         table = "cart"
 
-
 class Order(Model):
     id = fields.UUIDField(pk=True)
     userid = fields.CharField(default=None, max_length=600)
@@ -216,6 +215,7 @@ class Order(Model):
     paymentoption = fields.CharField(default=None, max_length=600)
     orderstatus = fields.CharField(default=None, max_length=600)
     ordered_quantity = fields.CharField(default=None, max_length=600)
+    deliveryaddress = fields.CharField(default=None,max_length=600)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
