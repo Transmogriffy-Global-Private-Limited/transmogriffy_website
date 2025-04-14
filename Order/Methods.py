@@ -26,7 +26,7 @@ async def order_create(payload: dict, order_data: OrderDupSchema):
 
         for item in cart_items:
             total_amount = item.price * item.quantity
-            payment_option = payload.get('paymentoption', 'Default Payment Option')
+            payment_option = payload.get('paymentoption')
             order_status = payload.get('orderstatus', 'Processing')
 
             # Create a new order for each cart item.
