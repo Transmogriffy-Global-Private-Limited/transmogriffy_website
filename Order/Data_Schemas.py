@@ -14,7 +14,7 @@ class OrderSchema(BaseModel):
 
 
 class OrderDupSchema(BaseModel):
-    userid: Optional[str] = None
+    user_id: Optional[str] = None
     cartid: Optional[str] = None
     deliveryaddress: Optional[str] = None
 
