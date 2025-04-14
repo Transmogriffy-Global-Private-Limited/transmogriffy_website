@@ -78,7 +78,8 @@ async def order_history(user_id: str):
                 "total_amount": order.totalamount,
                 "payment_option": order.paymentoption,
                 "order_status": order.orderstatus,
-                "deliveryaddress": order.deliveryaddress
+                "deliveryaddress": order.deliveryaddress,
+                "user_id": order.userid
             }
 
             order_history_with_products.append(order_details)

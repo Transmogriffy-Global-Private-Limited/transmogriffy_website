@@ -5,7 +5,7 @@ from fastapi import (
     status,
     HTTPException,
 )
-from .Methods import add_to_cart, increase_quantity, decrease_quantity,get_cart
+from .Methods import add_to_cart, increase_quantity, decrease_quantity,get_cart,remove_from_cart
 from .Database_Schemas import CartSchema, ManagementQuantity,GetCartOfauser
 
 cart_router = APIRouter()
@@ -63,3 +63,17 @@ async def decrease_quantity_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to decrease quantity: {str(e)}",
         )
+
+@cart_router.post("/removefromcart", status_code=status.HTTP_200_OK)
+async def remove_from_cart_endpoint(
+    management_data: ManagementQuantity,
+):
+    try:
+        result = await remove_from_cart({}, management_data)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to remove from cart: {str(e)}",
+        )
+
