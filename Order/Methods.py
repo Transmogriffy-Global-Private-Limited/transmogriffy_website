@@ -11,6 +11,8 @@ from Database_and_ORM.Database_Models import Order, Cart, Product
 async def order_create(payload: dict, order_data: OrderDupSchema):
     user_id = order_data.user_id
     delivery_address = order_data.deliveryaddress
+    payment_option = order_data.paymentoption
+    order_status = order_data.orderstatus
 
     cart_items = await Cart.filter(userid=user_id).all()
     print("Cart items:", cart_items)
@@ -26,8 +28,7 @@ async def order_create(payload: dict, order_data: OrderDupSchema):
 
         for item in cart_items:
             total_amount = item.price * item.quantity
-            payment_option = payload.get('paymentoption')
-            order_status = payload.get('orderstatus', 'Processing')
+         
 
             # Create a new order for each cart item.
             new_order = await Order.create(
