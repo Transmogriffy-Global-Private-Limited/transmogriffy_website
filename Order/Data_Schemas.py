@@ -18,6 +18,9 @@ class OrderDupSchema(BaseModel):
     cartid: Optional[str] = None
     deliveryaddress: Optional[str] = None
 
+class OrderStatusSchema(BaseModel):
+    orderid: Optional[str] = None
+    orderstatus: Optional[str] = None
 
 class StandAloneUserId(BaseModel):
     user_id: Optional[str] = None
