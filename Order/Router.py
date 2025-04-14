@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, Header, status, HTTPException, Body
 
 from .Methods import order_create, order_history
-from .Data_Schemas import OrderSchema, StandAloneUserId
+from .Data_Schemas import OrderDupSchema, StandAloneUserId
 
 order_router = APIRouter()
 
 
 @order_router.post("/addorder", status_code=status.HTTP_200_OK)
-async def order_endpoint(order_data: OrderSchema):
+async def order_endpoint(order_data: OrderDupSchema):
     try:
         result = await order_create({}, order_data)
         return {"message": "Order created Successfully"}

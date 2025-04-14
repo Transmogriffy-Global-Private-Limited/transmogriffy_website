@@ -5,32 +5,56 @@ import re
 import os
 import shutil
 from decouple import config
-from .Data_Schemas import OrderSchema
+from .Data_Schemas import OrderSchema,OrderDupSchema
 from Database_and_ORM.Database_Models import Order, Cart, Product
 
 
-async def order_create(payload: dict, order_data: OrderSchema):
-    userid = order_data.user_id
-    productid = order_data.productid
-    order_quantity = order_data.order_quantity
-    totalamount = order_data.totalamount
-    paymentoption = order_data.paymentoption
-    orderstatus = order_data.orderstatus
-    try:
-        new_order_entry = await Order.create(
-            id=uuid.uuid4(),
-            userid=userid,
-            productid=productid,
-            ordered_quantity=order_quantity,
-            totalamount=totalamount,
-            paymentoption=paymentoption,
-            orderstatus=orderstatus,
+async def order_create(payload: dict, order_data: OrderDupSchema):
+    user_id = order_data.userid
+    cart_id = order_data.cartid
+    delivery_address = order_data.deliveryaddress
+
+    # Validate that both user ID and cart ID exist in the Cart table.
+    cart_items = await Cart.filter(userid=user_id).all()
+    if not cart_items:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cart not found for the given user."
         )
-        return new_order_entry
+
+    # Optionally, you might want to wrap this in a DB transaction to ensure atomicity.
+    created_orders = []
+    try:
+        # Loop over each cart item to create order entries.
+        for item in cart_items:
+            # Compute total amount (or use logic you need).
+            total_amount = item.price * item.quantity
+
+            # The paymentoption and orderstatus fields are not in the Cart.
+            # They can be obtained from the payload if available or set to default values.
+            payment_option = payload.get('paymentoption', 'Default Payment Option')
+            order_status = payload.get('orderstatus', 'Processing')
+
+            new_order = await Order.create(
+                id=uuid.uuid4(),
+                userid=user_id,
+                productid=item.productid,
+                ordered_quantity=item.quantity,  # from Cart.quantity
+                totalamount=str(total_amount),    # if Order.totalamount is a CharField, convert as needed
+                paymentoption=payment_option,
+                orderstatus=order_status,
+                deliveryaddress=delivery_address
+            )
+            created_orders.append(new_order)
+
+        # After successfully creating orders, clear the cart items for that user and cart.
+        await Cart.filter(userid=user_id).delete()
+
+        return {"message": "Order created successfully.", "orders": created_orders}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create order: {str(e)}",
+            detail=f"Failed to create order: {str(e)}"
         )
 
 
@@ -54,6 +78,8 @@ async def order_history(user_id: str):
                 "total_amount": order.totalamount,
                 "payment_option": order.paymentoption,
                 "order_status": order.orderstatus,
+                "deliveryaddress": order.deliveryaddress,
+                "user_id": order.userid
             }
 
             order_history_with_products.append(order_details)
