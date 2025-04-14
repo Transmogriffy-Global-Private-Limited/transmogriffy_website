@@ -229,6 +229,7 @@ class Payments(Model):
     currency = fields.CharField(default=None, max_length=600)
     receipt = fields.CharField(default=None, max_length=600)
     notes = fields.CharField(default=None, max_length=600)
+    paymentstatus = fields.CharField(default=None, max_length=600)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
