@@ -16,17 +16,15 @@ async def add_to_cart(payload: Dict, cart_data: CartSchema):
     userid = cart_data.user_id
     productid = cart_data.productid
     price = float(cart_data.price)
-
-    try:
-        # Check if the product is already in the user's cart
-        existing_cart_entry = await Cart.filter(userid=userid, productid=productid).first()
+  # Check if the product is already in the user's cart
+    existing_cart_entry = await Cart.filter(userid=userid, productid=productid).first()
         
-        if existing_cart_entry:
+    if existing_cart_entry:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Product is already in the cart.",
             )
-        
+    try:    
         # If the product isn't in the cart, create a new entry
         new_cart_entry = await Cart.create(
             id=uuid.uuid4(),

@@ -15,65 +15,38 @@ cart_router = APIRouter()
 async def add_to_cart_endpoint(
     cart_data: CartSchema,
 ):
-    try:
         result = await add_to_cart({}, cart_data)
         return {"message": "Added to cart successfully"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to add to cart: {str(e)}",
-        )
 
 @cart_router.post("/getcartdetails", status_code=status.HTTP_200_OK)
 async def cart_get(management_data:GetCartOfauser):
-    try:
         result = await get_cart({},management_data)
         return result
-    except Exception as e:
-         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to increase quantity: {str(e)}",
-        )
-
+  
 
 # increase the quantity of the product
 @cart_router.post("/increasequantity", status_code=status.HTTP_200_OK)
 async def increase_quantity_endpoint(
     management_data: ManagementQuantity,
 ):
-    try:
         result = await increase_quantity({}, management_data)
         return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to increase quantity: {str(e)}",
-        )
+
 
 #decrease quantity of the product
 @cart_router.post("/decreasemethods", status_code=status.HTTP_200_OK)
 async def decrease_quantity_endpoint(
     management_data: ManagementQuantity,
 ):
-    try:
         result = await decrease_quantity({}, management_data)
         return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to decrease quantity: {str(e)}",
-        )
+ 
 
 @cart_router.post("/removefromcart", status_code=status.HTTP_200_OK)
 async def remove_from_cart_endpoint(
     management_data: ManagementQuantity,
 ):
-    try:
+    
         result = await remove_from_cart({}, management_data)
         return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to remove from cart: {str(e)}",
-        )
 
