@@ -39,6 +39,8 @@ middlewares = [
             "User_Type",
             "user_type",
             "User_type",
+            "Two_Factor_Enabled",
+            "two_factor_enabled",
         ],
     ),
     Middleware(VerifyAPIKeyMiddleware),
