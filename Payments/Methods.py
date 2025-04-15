@@ -59,17 +59,17 @@ async def razorpayfn(payment_schema: PaymentSchema):
             if not product_entry:
                 raise HTTPException(status_code=404, detail=f"Product {item.productid} not found")
 
-            existing_payment = await Payments.filter(
-                userid=userid,
-                productid=item.productid,
-                paymentstatus="created"
-            ).first()
+            # existing_payment = await Payments.filter(
+            #     userid=userid,
+            #     productid=item.productid,
+            #     paymentstatus="created"
+            # ).first()
 
-            if existing_payment:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"You've already paid for product {item.productid}. Cannot pay again unless it's a new order."
-                )
+            # if existing_payment:
+            #     raise HTTPException(
+            #         status_code=400,
+            #         detail=f"You've already paid for product {item.productid}. Cannot pay again unless it's a new order."
+            #     )
 
             item_total = product_entry.price * item.quantity
             total_amount += item_total
