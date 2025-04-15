@@ -15,6 +15,7 @@ from os import path
 from Order.Router import order_router
 from Payments.Router import payment_router
 from Contactus.Router import contact_router
+from Analytics.Router import analytics_router
 
 
 @asynccontextmanager
@@ -75,7 +76,8 @@ routers = [
     (cart_router, "/cart", ["Cart"]),
     (order_router, "/order", ["Order"]),
     (payment_router, "/payments", ["Payments"]),
-    (contact_router,'/contact',['ContactUs'])
+    (contact_router,'/contact',['ContactUs']),
+    (analytics_router,'/analytics',['Analytics'])
 ]
 
 for router, prefix, tags in routers:
