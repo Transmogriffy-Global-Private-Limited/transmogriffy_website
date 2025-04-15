@@ -103,7 +103,7 @@ async def razorpayfn(payment_schema: PaymentSchema):
                 paymentid=order["id"],
                 paymentstatus=order["status"],
                 receipt=order["receipt"],
-                notes="created"
+                notes=order["notes"]
             )
 
         return {
