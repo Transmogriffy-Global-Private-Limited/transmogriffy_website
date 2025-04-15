@@ -147,13 +147,39 @@ async def verifypayment(payload: dict, verify_payment: TransactionsSchema):
 
 
 
+# async def transaction_history(
+#     payload: dict, management_data: TransactionsHistoryUser
+# ):
+#     userid = management_data.user_id
+#     try:
+#         thus = await Transactions.get(userid=userid)
+#         transactionshistory = []
+#         for thu in thus:
+#             userdetails = await User.get(id=thu.userid)
+#             order_details = {
+#                 "id": thu.id,
+#                 "paymentid": thu.razorpaypaymentid,
+#                 "price": thu.price,
+#                 "userid": thu.userid,
+#                 "fullname": thu.name,
+#             }
+#             transactionshistory.append(order_details)
+#         return transactionshistory
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail=f"Failed to fetch transaction history: {str(e)}",
+#         )
+
+
 async def transaction_history(
     payload: dict, management_data: TransactionsHistoryUser
 ):
     userid = management_data.user_id
     try:
-        thus = await Transactions.get(userid=userid)
+        thus = await Transactions.filter(userid=userid).all()  # ← fixed this
         transactionshistory = []
+
         for thu in thus:
             userdetails = await User.get(id=thu.userid)
             order_details = {
@@ -161,10 +187,12 @@ async def transaction_history(
                 "paymentid": thu.razorpaypaymentid,
                 "price": thu.price,
                 "userid": thu.userid,
-                "fullname": thu.name,
+                "fullname": userdetails.name,  # ← use userdetails fetched here
             }
             transactionshistory.append(order_details)
+
         return transactionshistory
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
