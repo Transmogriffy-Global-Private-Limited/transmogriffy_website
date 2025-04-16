@@ -112,3 +112,23 @@ async def user_purchase_summary(user_id: str):
         })
 
     return result_summary
+
+async def user_total_spent_and_orders(user_id: str):
+    orders = await Order.filter(userid=user_id)
+    total_spent = 0.0
+    total_orders = len(orders)
+
+    for order in orders:
+        try:
+            quantity = int(order.ordered_quantity)
+        except (ValueError, TypeError):
+            quantity = 0
+
+        product = await Product.get(id=order.productid)
+        total_spent += product.price * quantity
+
+    return {
+        "user_id": user_id,
+        "total_orders": total_orders,
+        "total_spent": total_spent
+    }

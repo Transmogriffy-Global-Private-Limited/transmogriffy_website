@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Body, status, HTTPException
 from pydantic import BaseModel
-from .Methods import product_analytics, product_stock_analysis, total_sales, user_purchase_summary
+from .Methods import product_analytics, product_stock_analysis, total_sales, user_purchase_summary,user_total_spent_and_orders
 
 analytics_router = APIRouter()
 
@@ -39,7 +39,7 @@ async def get_total_sales():
 class UserPurchaseSummaryRequest(BaseModel):
     user_id: str
 
-@analytics_router.get("/user_purchase_summary", status_code=status.HTTP_200_OK)
+@analytics_router.post("/user_purchase_summary", status_code=status.HTTP_200_OK)
 async def get_user_purchase_summary(request: UserPurchaseSummaryRequest = Body(...)):
     try:
         # Extract user_id from the request body
@@ -50,4 +50,15 @@ async def get_user_purchase_summary(request: UserPurchaseSummaryRequest = Body(.
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch user purchase summary: {str(e)}"
+        )
+@analytics_router.post("/user_total_spent_and_orders", status_code=status.HTTP_200_OK)
+async def get_user_total_spent_and_orders(request: UserPurchaseSummaryRequest = Body(...)):
+    try:
+        user_id = request.user_id
+        result = await user_total_spent_and_orders(user_id)
+        return {"user_total_spent_and_orders": result}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch user total spent and orders: {str(e)}"
         )
