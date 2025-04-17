@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Header, status, HTTPException, Body
 
-from .Methods import order_create, order_history, order_status_update
+from .Methods import order_create, order_history, order_status_update,get_allorders
 from .Data_Schemas import OrderDupSchema, StandAloneUserId,OrderStatusSchema
 
 order_router = APIRouter()
@@ -25,3 +25,7 @@ async def get_order_history(request: StandAloneUserId):
 @order_router.post("/statusupdate", status_code=status.HTTP_200_OK)
 async def update_order_status(status_data: OrderStatusSchema):
     return await order_status_update(status_data)
+
+@order_router.get("/allorderdata",status_code = status.HTTP_200_OK)
+async def list_of_orders():
+     return await get_allorders()

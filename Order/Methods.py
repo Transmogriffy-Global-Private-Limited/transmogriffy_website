@@ -6,7 +6,7 @@ import os
 import shutil
 from decouple import config
 from .Data_Schemas import OrderSchema,OrderDupSchema,OrderStatusSchema
-from Database_and_ORM.Database_Models import Order, Cart, Product
+from Database_and_ORM.Database_Models import Order, Cart, Product,User
 
 async def order_create(payload: dict, order_data: OrderDupSchema):
     user_id = order_data.user_id
@@ -51,7 +51,36 @@ async def order_create(payload: dict, order_data: OrderDupSchema):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create order: {str(e)}"
         )
+async def get_allorders():
+    try:
+        orders = await Order.all()
+        order_with_up = []
 
+        for order in orders:
+            product =  await Product.get(id=order.productid)
+            userdata = await User.get(id=order.userid)
+            order_details = {
+                "order_id":order.id,
+                 "product_name": product.name,
+                "product_model": product.model,
+                "product_details": product.details,
+                "quantity_ordered": order.ordered_quantity,
+                "total_amount": order.totalamount,
+                "payment_option": order.paymentoption,
+                "order_status": order.orderstatus,
+                "deliveryaddress": order.deliveryaddress,
+                "user_name": userdata.name,
+                "user_email":userdata.email,
+                "address":order.deliveryaddress,
+                "user_phonenumber":userdata.phone_number
+            }
+            order_with_up.append(order_details)
+        return order_with_up
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch order history: {str(e)}",
+        )
 
 async def order_history(user_id: str):
 
