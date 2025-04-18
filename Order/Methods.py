@@ -150,3 +150,26 @@ async def order_status_update(order_status: OrderStatusSchema):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update order status: {str(e)}"
         )
+
+async def cancel_order(order_id: str):
+    try:
+        
+        order = await Order.get(id=order_id)
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Order with ID {order_id} not found."
+            )
+        order.orderstatus = "canceled"
+        await order.save()
+        product = await Product.get(id=order.productid)
+        updated_quantity = product.quantity + int(order.ordered_quantity)
+        await Product.filter(id=order.productid).update(quantity=updated_quantity)
+
+        return {"message": f"Order {order_id} canceled successfully and product restocked."}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to cancel order: {str(e)}"
+        )

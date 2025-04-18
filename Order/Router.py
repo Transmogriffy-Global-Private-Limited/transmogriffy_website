@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Header, status, HTTPException, Body
 
-from .Methods import order_create, order_history, order_status_update,get_allorders
+from .Methods import order_create, order_history, order_status_update,get_allorders,cancel_order
 from .Data_Schemas import OrderDupSchema, StandAloneUserId,OrderStatusSchema
 
 order_router = APIRouter()
@@ -28,4 +28,8 @@ async def update_order_status(status_data: OrderStatusSchema):
 
 @order_router.get("/allorderdata",status_code = status.HTTP_200_OK)
 async def list_of_orders():
-     return await get_allorders()
+    return await get_allorders()
+
+@order_router.post("/cancelorder", status_code=status.HTTP_200_OK)
+async def cancel_order_endpoint(order_id: str):
+    return await cancel_order(order_id)
