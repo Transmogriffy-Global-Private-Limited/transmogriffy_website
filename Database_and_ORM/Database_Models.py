@@ -245,9 +245,15 @@ class Transactions(Model):
 
 class ContactUs(Model):
     id = fields.UUIDField(pk=True)
-    name = fields.CharField(default=None, max_length=1200)
+    firstname = fields.CharField(default=None, max_length=1200)
+    lastname = fields.CharField(default=None, max_length=1200)
+    company = fields.CharField(default=None, max_length=1200)
+    yoursite = fields.CharField(default=None, max_length=1200)
+    address = fields.TextField(default=None)
+    city = fields.CharField(default=None, max_length=1200)
+    postcode = fields.CharField(default=None, max_length=1200)
+    telephone = fields.CharField(default=None, max_length=1200)
     email = fields.CharField(default=None,max_length=1200)
-    contactno =  fields.CharField(default=None,max_length=1200)
     message = fields.TextField(default=None)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)

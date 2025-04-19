@@ -5,21 +5,23 @@ from .Database_Schemas import ContactSchema
 from Utility_Methods.libs import email_sender
 
 async def savecontact(payload:dict,payload_data:ContactSchema):
-    name = payload_data.name
-    email= payload_data.email
-    contactno = payload_data.contactno
-    message = payload_data.message
     try:
         new_contact = await ContactUs.create(
             id = uuid.uuid4(),
-            name = name,
-            email =  email,
-            contactno = contactno,
-            message =  message
+            firstname = payload_data.firstname,
+            lastname = payload_data.lastname,
+            company = payload_data.company,
+            yoursite = payload_data.yoursite,
+            address = payload_data.address,
+            city = payload_data.city,
+            postcode = payload_data.postcode,
+            telephone = payload_data.telephone,
+            email =  payload_data.email,
+            message =  payload_data.message
         )
         to = 'transmogrify13@outlook.com'
         subject = 'Received successfully'
-        text =  f'Contact details  Username - {name} user_email={email} contact_phoneno - {contactno} contact reason - message - {message} '
+        text =  f'Contact detail firstname - {new_contact.firstname} lastname -{new_contact.lastname} address - {new_contact.address} city - {new_contact.city} postcode - {new_contact.postcode} user_email={new_contact.email} contact_phoneno - {new_contact.telephone} contact reason - message - {new_contact.message} '
         email_sender(to,subject,text)
         return new_contact
     except Exception as e:
@@ -27,6 +29,7 @@ async def savecontact(payload:dict,payload_data:ContactSchema):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to save contact data: {str(e)}",
         )
+        
 
 async def see_all_contacts():
     try:
