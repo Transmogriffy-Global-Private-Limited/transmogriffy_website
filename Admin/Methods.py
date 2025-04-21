@@ -73,7 +73,7 @@ async def authenticate_admin(email: str, password: str, otp_code: str = None):
     if admin.two_fa_status:
         if not otp_code:
             await generate_and_send_otp(
-                admin.email, purpose=OTPTypeEnum.TWO_FA
+                admin.id, purpose=OTPTypeEnum.TWO_FA
             )
             raise HTTPException(
                 status_code=status.HTTP_308_PERMANENT_REDIRECT,
@@ -254,7 +254,7 @@ async def request_admin_password_reset(email: str) -> dict:
 
     # Prepare the email content
     email_content = await get_email_content(
-        "password_reset", username=admin.name, otp_code=otp_code
+        "Password_Reset", username=admin.name, otp_code=otp_code
     )
 
     # Send the OTP via email
@@ -413,10 +413,12 @@ async def generate_and_send_otp(admin_id: str, purpose: str) -> dict:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error generating OTP: {str(e)}",
             )
+        
+    otp_template=purpose    
 
     # Prepare and send the OTP via email
     email_content = await get_email_content(
-        "otp_template", username=admin.name, otp_code=otp_code
+        otp_template, username=admin.name, otp_code=otp_code
     )
     email_sent = await send_email(
         to_email=admin.email,
@@ -468,12 +470,12 @@ async def logout_admin(authorization: str) -> dict:
     """
     try:
         token = await get_token_from_authorization_header_value(authorization)
-        await Blacklisted_Tokens.create(token=token)
+        await Blacklisted_Tokens.create(Blacklisted_Tokens=token)
         return {"message": "Admin successfully logged out"}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Either you have already logged out, or there has been an error from our end",
+            detail=f"Either you have already logged out, or there has been an error from our end {e}",
         )
 
 
@@ -536,26 +538,6 @@ async def get_admin_data(payload: dict) -> dict:
     admin_data.pop("password", None)
     admin_data.pop("id", None)
 
-    # Handle profile picture field
-    if admin_data.get("profile_picture_path"):
-        encoded_picture = await encode_path_to_base64(
-            admin_data["profile_picture_path"]
-        )
-        if (
-            encoded_picture
-            == "Invalid path provided. Path is neither a file nor a directory, or doesn't exist."
-        ):
-            # If the path is invalid, remove the field
-            admin_data.pop("profile_picture_path", None)
-        else:
-            # Otherwise, set the Base64-encoded string
-            admin_data["profile_picture"] = encoded_picture
-    else:
-        admin_data["profile_picture"] = None
-
-    # Ensure the path field is removed from the response
-    admin_data.pop("profile_picture_path", None)
-
     return admin_data
 
 
@@ -563,86 +545,89 @@ import base64
 
 
 async def view_user_data(
-    payload: dict, user_id: str = None, limit: str = None
+	payload: dict, user_id: str = None, limit: str = None
 ) -> list:
-    """
-    Retrieves user data by user_id or all users in a paginated format.
-    Excludes sensitive fields such as password and profile_picture_path.
-    """
-    # Verify that the requesting user is an admin
-    admin_id = payload.get("user_id")
-    admin = await Admin.get_or_none(id=admin_id)
-    if not admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins are authorized to view user data.",
-        )
+	"""
+	Retrieves user data by user_id or all users in a paginated format.
+	Excludes sensitive fields such as password and profile_picture_path.
+	"""
 
-    async def enrich_user_data(user: dict) -> dict:
-        user.pop("password", None)
+	admin_id = payload.get("user_id")
+	admin = await Admin.get_or_none(id=admin_id)
+	if not admin:
+		raise HTTPException(
+			status_code=status.HTTP_403_FORBIDDEN,
+			detail="Only admins are authorized to view user data.",
+		)
 
-        user_obj = await User.get_or_none(id=user.get("id"))
-        if user_obj and user_obj.profile_picture:
-            try:
-                mime_type = "image/png"
-                header = user_obj.profile_picture[:10]
-                if header.startswith(b"\xff\xd8"):
-                    mime_type = "image/jpeg"
-                elif header.startswith(b"\x89PNG"):
-                    mime_type = "image/png"
+	async def enrich_user_data(user: dict) -> dict:
+		user.pop("password", None)
+		user.pop("profile_picture_path", None)
 
-                encoded_picture = base64.b64encode(
-                    user_obj.profile_picture
-                ).decode("utf-8")
-                user["profile_picture"] = (
-                    f"data:{mime_type};base64,{encoded_picture}"
-                )
-            except Exception:
-                user["profile_picture"] = None
-        else:
-            user["profile_picture"] = None
+		user_obj = await User.get_or_none(id=user.get("id"))
+		if not user_obj:
+			user["profile_picture"] = None
+			return user
 
-        user.pop("profile_picture_path", None)
-        return user
+		raw_pic = user_obj.profile_picture
+		if not raw_pic or not isinstance(raw_pic, bytes):
+			user["profile_picture"] = None
+			return user
 
-    if user_id:
-        user_list = await User.filter(id=user_id).values()
-        if not user_list:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
-        enriched_user = await enrich_user_data(user_list[0])
-        return [enriched_user]
+		try:
+			mime_type = "image/png"
+			if raw_pic.startswith(b"\xff\xd8"):
+				mime_type = "image/jpeg"
+			elif raw_pic.startswith(b"\x89PNG"):
+				mime_type = "image/png"
 
-    if not limit:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Limit parameter is required if user_id is not provided.",
-        )
+			encoded_picture = base64.b64encode(raw_pic).decode("utf-8")
+			user["profile_picture"] = f"data:{mime_type};base64,{encoded_picture}"
+		except Exception:
+			user["profile_picture"] = None
 
-    try:
-        start, end = map(int, limit.split("-"))
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Limit parameter format is incorrect. Use 'start-end' format.",
-        )
+		return user
 
-    users = (
-        await User.all()
-        .order_by("-updated_at")
-        .offset(start - 1)
-        .limit(end - start + 1)
-        .values()
-    )
+	if user_id:
+		user_list = await User.filter(id=user_id).values()
+		if not user_list:
+			raise HTTPException(
+				status_code=status.HTTP_404_NOT_FOUND,
+				detail="User not found",
+			)
+		enriched_user = await enrich_user_data(user_list[0])
+		return [enriched_user]
 
-    enriched_users = []
-    for user in users:
-        enriched_user = await enrich_user_data(user)
-        enriched_users.append(enriched_user)
+	if not limit:
+		raise HTTPException(
+			status_code=status.HTTP_400_BAD_REQUEST,
+			detail="Limit parameter is required if user_id is not provided.",
+		)
 
-    return enriched_users
+	try:
+		start, end = map(int, limit.split("-"))
+		if start < 1 or end < start:
+			raise ValueError
+	except ValueError:
+		raise HTTPException(
+			status_code=status.HTTP_400_BAD_REQUEST,
+			detail="Limit parameter format is incorrect. Use 'start-end' with start â‰¥ 1 and end â‰¥ start.",
+		)
+
+	users = (
+		await User.all()
+		.order_by("-updated_at")
+		.offset(start - 1)
+		.limit(end - start + 1)
+		.values()
+	)
+
+	enriched_users = []
+	for user in users:
+		enriched_user = await enrich_user_data(user)
+		enriched_users.append(enriched_user)
+
+	return enriched_users
 
 
 async def verify_email_otp(payload: dict, otp_code: str) -> bool:
@@ -653,7 +638,7 @@ async def verify_email_otp(payload: dict, otp_code: str) -> bool:
     admin = await Admin.get(id=admin_id)
 
     if await verify_admin_otp(
-        otp_code, admin_id, purpose=OTPTypeEnum.MAIL_VERIFICATION
+        admin_id, otp_code=otp_code, purpose=OTPTypeEnum.MAIL_VERIFICATION
     ):
         # Update the user's email_verified status
         admin.email_verified = True

@@ -1,5 +1,5 @@
 email_templates = {
-    "password_reset": {
+    "Password_Reset": {
         "subject": "Password Reset Request for {username}",
         "body": (
             "Hello {username},\n\n"
@@ -9,7 +9,7 @@ email_templates = {
             "If you did not request this, please ignore this email."
         ),
     },
-    "2fa_verification": {
+    "2FA": {
         "subject": "Your 2FA Verification Code",
         "body": (
             "Hi {username},\n\n"
@@ -17,7 +17,7 @@ email_templates = {
             "Please enter this code to complete your login process. This will be valid for 10 minutes"
         ),
     },
-    "email_verification": {
+    "Mail Verification": {
         "subject": "Verify Your Email Address",
         "body": (
             "Hello {username},\n\n"
