@@ -33,12 +33,12 @@ async def savecontact(payload:dict,payload_data:ContactSchema):
 
 async def see_all_contacts():
     try:
-        # Fetch all contacts from the database
-        all_contacts = await ContactUs.all()
-        serialized_contacts = [contact.to_dict() for contact in all_contacts]
-        return serialized_contacts
+        contacts: list[dict] = await ContactUs.all().values(
+            "id", "firstname", "lastname", "company", "yoursite", "address", "city", "postcode", "telephone", "email", "message"
+        )
+        return contacts
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}",
+            detail=f"Failed to retrieve contacts: {e}"
         )
