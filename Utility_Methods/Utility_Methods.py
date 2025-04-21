@@ -176,7 +176,7 @@ async def verify_admin_otp(
     # Check OTP existence and expiration
     if otp_entry and otp_entry.expiration > datetime.now(timezone.utc):
         # OTP is valid; delete it after successful verification
-        await otp_entry.delete()
+        await AdminOTP.filter(id=otp_entry.id).delete()
         return True
     else:
         raise HTTPException(
