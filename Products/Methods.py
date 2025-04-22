@@ -38,7 +38,6 @@ async def verify_admin(payload: dict):
 CLOUDINARY_URL = config("CLOUDINARY_URL")
 uploadpath = "transevwebsite/uploads/productimages/"
 
-
 async def add_product(
     payload: dict,
     product_data: AddProductSchema,
@@ -46,63 +45,47 @@ async def add_product(
 ) -> dict:
     """Creates a new product with optional images (Admin only)."""
     await verify_admin(payload)
-
     product_id = str(uuid.uuid4())
     image_urls = []
 
     if files:
-        # Configure Cloudinary using environment variable
-        cloudinary.config(
-            secure=True  # Force HTTPS
-        )
-        
+        cloudinary.config(secure=True)
         for file in files:
             try:
-                # Upload to Cloudinary with organized folder structure
                 upload_result = cloudinary.uploader.upload(
                     file.file,
-                    folder=f"{uploadpath}{product_id}",
-                    use_filename=True,
-                    unique_filename=False,
+                    public_id=f"{uploadpath}{product_id}/{file.filename.split('.')[0]}",
                     overwrite=False,
                     resource_type="auto"
                 )
                 image_urls.append(upload_result["secure_url"])
-                
             except Exception as e:
                 raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Failed to upload image {file.filename}: {str(e)}"
+                    status_code=500,
+                    detail=f"Image upload failed for {file.filename}: {str(e)}"
                 )
 
+    # Explicit field assignment with fallbacks
     product = await Product.create(
         id=product_id,
-        **product_data.model_dump(),
-        images=image_urls  # Store Cloudinary URLs directly
+        name=product_data.name,
+        model=product_data.model,
+        price=product_data.price,
+        quantity=product_data.quantity if product_data.quantity is not None else 1,
+        details=product_data.details or {},
+        images=image_urls
     )
 
-    return product_data.model_dump() | {
+    return {
         "id": product_id,
-        "imageUrls": image_urls,  # Return Cloudinary URLs
-        "uploadPath": f"{uploadpath}{product_id}"
+        "name": product.name,
+        "model": product.model,
+        "price": float(product.price),
+        "quantity": product.quantity,
+        "imageUrls": image_urls,
+        "details": product.details
     }
 
-
-def get_product_media_path(product_id: str) -> str:
-    """Returns the full media path for a given product."""
-    return os.path.join(config("PRODUCTS_MEDIA_PATH"), product_id)
-
-
-def get_product_images(product_id: str) -> list:
-    """Returns a list of image paths for a product, if any exist."""
-    product_path = os.path.join(config("PRODUCTS_MEDIA_PATH"), str(product_id))
-    if os.path.exists(product_path) and os.path.isdir(product_path):
-        return [
-            os.path.join(product_path, f)
-            for f in os.listdir(product_path)
-            if os.path.isfile(os.path.join(product_path, f))
-        ]
-    return []
 
 
 async def get_product(product_id: uuid) -> dict:
@@ -110,8 +93,7 @@ async def get_product(product_id: uuid) -> dict:
     try:
         product = await Product.get(
             id=product_id, is_listed=True
-        )  # Ensure only listed products are fetched
-        image_paths = get_product_images(product_id)
+        )
 
         return {
             "id": str(product.id),
@@ -177,55 +159,55 @@ async def get_all_products():
             detail="Internal server error",
         )
 
-
 async def update_product(
     payload: dict,
     product_data: UpdateProductSchema,
-    files: Optional[List[UploadFile]] = None,  # Optional images to ADD
+    files: Optional[List[UploadFile]] = None,
 ) -> dict:
-    """Updates an existing product with optional image additions and deletions (Admin only)."""
+    """Updates product with Cloudinary image management."""
     await verify_admin(payload)
-
+    
     try:
         product = await Product.get(id=product_data.id)
-        current_images = product.images or []
+        current_images = product.images.copy()
+        
+        # Remove specified images
+        if product_data.removed_images:
+            current_images = [
+                img for img in current_images
+                if img not in product_data.removed_images
+            ]
 
-        # ------------------- IMAGE REMOVAL LOGIC -------------------
-        removed_images = set(product_data.removed_images or [])
-        updated_images = [
-            img
-            for img in current_images
-            if img not in removed_images
-        ]
-
-        # ------------------- IMAGE ADDITION LOGIC -------------------
+        # Add new images
         if files:
+            cloudinary.config(secure=True)
             for file in files:
-                content = await file.read()
-
-                # Infer MIME
-                mime_type = file.content_type or "image/png"
-                base64_data = base64.b64encode(content).decode("utf-8")
-                full_data_uri = f"data:{mime_type};base64,{base64_data}"
-
-                updated_images.append(
-                    {"filename": file.filename, "data": full_data_uri}
+                filename_base = os.path.splitext(file.filename)[0]
+                file_extension = os.path.splitext(file.filename)[1][1:]
+                
+                upload_result = cloudinary.uploader.upload(
+                    file.file,
+                    folder=f"{uploadpath}{product.id}",
+                    public_id=filename_base,
+                    overwrite=False,
+                    format=file_extension,
+                    resource_type="auto"
                 )
+                current_images.append(upload_result["secure_url"])
 
-        # ------------------- DYNAMIC FIELD UPDATE -------------------
+        # Update product fields
         update_data = product_data.model_dump(
-            exclude_unset=True, exclude={"id", "removed_images"}
+            exclude_unset=True,
+            exclude={"id", "removed_images"}
         )
-        update_data["images"] = updated_images
+        update_data["images"] = current_images
 
-        await Product.filter(id=product_data.id).update(**update_data)
-
+        await Product.filter(id=product.id).update(**update_data)
+        
         return {
             "id": str(product.id),
             **update_data,
-            "imagePath": [
-                img for img in updated_images
-            ],  # Maintain return contract
+            "imageUrls": current_images
         }
 
     except DoesNotExist:
@@ -485,7 +467,7 @@ class DelistedProductSearchEngine:
         self.product_data = {}
         self.hash_index = defaultdict(list)
 
-        # ✅ Fetch only delisted products (is_listed=False)
+        # Fetch only delisted products (is_listed=False)
         products = await Product.filter(is_listed=False)
 
         for product in products:
@@ -544,7 +526,7 @@ class DelistedProductSearchEngine:
 
     async def search_products(self, payload: dict, query: str, limit: str):
         """Performs a fully optimized product search for delisted products (Admin Only)."""
-        await verify_admin(payload)  # ✅ Ensure only admins can access this
+        await verify_admin(payload)  # Ensure only admins can access this
 
         if not self.vp_tree:
             await self.index_products()

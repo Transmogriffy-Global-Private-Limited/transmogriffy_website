@@ -165,14 +165,14 @@ class Admin(Model):
 
 class Product(Model):
     id = fields.UUIDField(pk=True)
-    name = fields.CharField(max_length=255, description="Product Name")
-    model = fields.CharField(max_length=255, description="Product Model")
-    details = fields.JSONField(description="Additional Product Details")
+    name = fields.CharField(max_length=255)
+    model = fields.CharField(max_length=255)
+    details = fields.JSONField(default=dict)  # Add default empty dict
     quantity = fields.IntField(default=1)
     is_listed = fields.BooleanField(default=True)
-    price = fields.FloatField(null=False)
-    images = fields.TextField(null=True)
-
+    price = fields.FloatField(default=0.0)  # Add default value
+    images = fields.JSONField(default=list)
+    
     class Meta:
         table = "product"
 
