@@ -19,6 +19,9 @@ from typing import List, Optional
 import os
 import shutil
 from decouple import config
+# Add to existing imports
+import cloudinary
+import cloudinary.uploader
 
 
 async def verify_admin(payload: dict):
@@ -32,6 +35,9 @@ async def verify_admin(payload: dict):
         )
     return admin
 
+CLOUDINARY_URL = config("CLOUDINARY_URL")
+uploadpath = "transevwebsite/uploads/productimages/"
+
 
 async def add_product(
     payload: dict,
@@ -42,30 +48,43 @@ async def add_product(
     await verify_admin(payload)
 
     product_id = str(uuid.uuid4())
-    image_data_list = []
-    image_names = []
+    image_urls = []
 
     if files:
+        # Configure Cloudinary using environment variable
+        cloudinary.config(
+            secure=True  # Force HTTPS
+        )
+        
         for file in files:
-            content = await file.read()
-
-            # Detect MIME
-            mime_type = file.content_type or "image/png"
-            base64_data = base64.b64encode(content).decode("utf-8")
-            full_data_uri = f"data:{mime_type};base64,{base64_data}"
-
-            image_data_list.append(
-                {"filename": file.filename, "data": full_data_uri}
-            )
-            image_names.append(file.filename)
+            try:
+                # Upload to Cloudinary with organized folder structure
+                upload_result = cloudinary.uploader.upload(
+                    file.file,
+                    folder=f"{uploadpath}{product_id}",
+                    use_filename=True,
+                    unique_filename=False,
+                    overwrite=False,
+                    resource_type="auto"
+                )
+                image_urls.append(upload_result["secure_url"])
+                
+            except Exception as e:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to upload image {file.filename}: {str(e)}"
+                )
 
     product = await Product.create(
-        id=product_id, **product_data.model_dump(), images=image_data_list
+        id=product_id,
+        **product_data.model_dump(),
+        images=image_urls  # Store Cloudinary URLs directly
     )
 
     return product_data.model_dump() | {
         "id": product_id,
-        "imagePath": image_names,  # Just return names, as requested
+        "imageUrls": image_urls,  # Return Cloudinary URLs
+        "uploadPath": f"{uploadpath}{product_id}"
     }
 
 
