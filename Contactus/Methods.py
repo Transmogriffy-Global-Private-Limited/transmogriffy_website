@@ -14,7 +14,7 @@ async def savecontact(payload:dict,payload_data:ContactSchema):
             email =  payload_data.email,
             message =  payload_data.message
         )
-        to = 'transmogrify13@outlook.com'
+        to = 'transmogrify08@outlook.com'
         subject = 'Received successfully'
         text =  f'Contact detail firstname - {new_contact.firstname} lastname -{new_contact.lastname} user_email={new_contact.email} contact_phoneno - {new_contact.telephone} contact reason - message - {new_contact.message} '
         email_sender(to,subject,text)
