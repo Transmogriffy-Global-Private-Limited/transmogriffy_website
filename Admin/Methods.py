@@ -83,6 +83,7 @@ async def authenticate_admin(email: str, password: str, otp_code: str = None):
     # Generate JWT
     token = await create_jwt(
         str(admin.id),
+        user_number="",
         expiration_duration=int(config("JWT_VALIDITY_FOR_NORMAL_SESSIONS")),
     )
     return admin, token
