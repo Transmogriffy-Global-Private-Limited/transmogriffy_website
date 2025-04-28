@@ -6,6 +6,7 @@ from Users.Data_Schemas import RoleEnum, OTPTypeEnum, AddressTypeEnum
 
 class User(Model):
     id = fields.UUIDField(pk=True)  # Primary key field
+    user_number = fields.IntField(unique=True)
     name = fields.CharField(max_length=100)
     email = fields.CharField(max_length=100, unique=True)
     email_verified = fields.BooleanField(default=False)
@@ -247,11 +248,6 @@ class ContactUs(Model):
     id = fields.UUIDField(pk=True)
     firstname = fields.CharField(default=None, max_length=1200)
     lastname = fields.CharField(default=None, max_length=1200)
-    company = fields.CharField(default=None, max_length=1200)
-    yoursite = fields.CharField(default=None, max_length=1200)
-    address = fields.TextField(default=None)
-    city = fields.CharField(default=None, max_length=1200)
-    postcode = fields.CharField(default=None, max_length=1200)
     telephone = fields.CharField(default=None, max_length=1200)
     email = fields.CharField(default=None,max_length=1200)
     message = fields.TextField(default=None)

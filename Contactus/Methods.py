@@ -10,11 +10,6 @@ async def savecontact(payload:dict,payload_data:ContactSchema):
             id = uuid.uuid4(),
             firstname = payload_data.firstname,
             lastname = payload_data.lastname,
-            company = payload_data.company,
-            yoursite = payload_data.yoursite,
-            address = payload_data.address,
-            city = payload_data.city,
-            postcode = payload_data.postcode,
             telephone = payload_data.telephone,
             email =  payload_data.email,
             message =  payload_data.message

@@ -22,8 +22,8 @@ from Utility_Methods.Utility_Methods import (
     generate_random_otp,
     get_token_from_authorization_header_value,
 )
+from Utility_Methods.ranint import get_next_user_number
 import os
-
 
 async def create_user(user_data: UserCreate) -> Union[User, dict]:
     """
@@ -31,10 +31,12 @@ async def create_user(user_data: UserCreate) -> Union[User, dict]:
     """
     # Hash the password with a salt
     hashed_password = await get_hashed_password(user_data.password)
+    usernumber = await get_next_user_number()
 
     user = User(
         name=user_data.name,
         email=user_data.email,  # Defaults to False if not passed
+        user_number=usernumber,
         password=hashed_password,
         phone_number=user_data.phone_number,  # Defaults to False if not passed
     )
@@ -72,6 +74,7 @@ async def authenticate_user(email: str, password: str):
     # Generate JWT token if 2FA is not enabled or OTP verification is successful
     token = await create_jwt(
         str(user.id),
+        int(user.user_number),
         expiration_duration=int(config("JWT_VALIDITY_FOR_NORMAL_SESSIONS")),
     )
     return user, token
