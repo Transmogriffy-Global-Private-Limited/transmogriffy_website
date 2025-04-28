@@ -16,7 +16,7 @@ async def savecontact(payload:dict,payload_data:ContactSchema):
         )
         to = 'transmogrify13@outlook.com'
         subject = 'Received successfully'
-        text =  f'Contact detail firstname - {new_contact.firstname} lastname -{new_contact.lastname} address - {new_contact.address} city - {new_contact.city} postcode - {new_contact.postcode} user_email={new_contact.email} contact_phoneno - {new_contact.telephone} contact reason - message - {new_contact.message} '
+        text =  f'Contact detail firstname - {new_contact.firstname} lastname -{new_contact.lastname} user_email={new_contact.email} contact_phoneno - {new_contact.telephone} contact reason - message - {new_contact.message} '
         email_sender(to,subject,text)
         return new_contact
     except Exception as e:
@@ -29,7 +29,7 @@ async def savecontact(payload:dict,payload_data:ContactSchema):
 async def see_all_contacts():
     try:
         contacts: list[dict] = await ContactUs.all().values(
-            "id", "firstname", "lastname", "company", "yoursite", "address", "city", "postcode", "telephone", "email", "message"
+            "id", "firstname", "lastname", "telephone", "email", "message"
         )
         return contacts
     except Exception as e:
