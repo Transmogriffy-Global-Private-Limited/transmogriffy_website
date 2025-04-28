@@ -1,6 +1,6 @@
 from tortoise.transactions import in_transaction
 from Database_and_ORM.Database_Models import User
-INITIAL_USER_NUMBER = 100000
+INITIAL_USER_NUMBER = 500000
 INCREMENT_STEP = 11
 
 async def get_next_user_number():
