@@ -1,3 +1,4 @@
+from base64 import standard_b64decode
 from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, UUID4, Field, field_validator
@@ -39,27 +40,57 @@ class ProductDetailsSchema(BaseModel):
     ingress_protection: Optional[str] = Field(
         None, description="Ingress protection rating (e.g., 'IP65')"
     )
-    length: Optional[float] = Field(
-        None, description="Length in meters"
-    )
+
     breadth: Optional[float] = Field(
         None, description="Breadth in meters"
     )
-    height: Optional[float] = Field(
-        None, description="Height in meters"
-    )
+
     weight_in_kgs: Optional[float] = Field(
         None, description="Weight in kilograms"
-    )
-    noise_level: Optional[str] = Field(
-        None, description="Noise level (e.g., '55dB')"
     )
     efficiency_in_percentage: Optional[float] = Field(
         None,
         alias="efficiency_in_percentage",
         description="Efficiency in percentage (e.g., 95.5)",
     )
+    dimensions: Optional[str] = Field(
+        None, description="Dimensions (e.g., 'W x D x H - 100x100x100mm')"
+    )
     additional_details: Optional[str] = None
+    gun_details: Optional[str] = Field(
+        None, description="Gun details (e.g., 'Two gun or one gun')"
+    )
+    gun_type: Optional[str] = Field(
+        None, description="Gun type (e.g., 'CCS2', 'CCS1')"
+    )
+    material: Optional[str] = Field(
+        None, description="Material type (e.g., 'Aluminum','Plasic')"
+    )
+    ouput_voltage: Optional[str] = Field(
+        None, description="Output voltage (e.g., '7.7 KW' or '30KW')"
+    )
+    display: Optional[str] = Field(
+        None, description="Does it have a display? (e.g., 'Yes', 'No')"
+    )
+    push_button: Optional[str] = Field(
+        None, description="Does it have a push button? (e.g., 'Yes', 'No')"
+    )
+    operatingtemps: Optional[str] = Field(
+        None,description="Operating temperature range (e.g., '-10°C to 150°C')"
+    )
+    chargingoperation: Optional[str] = Field(
+        None, description="Charging operation details (e.g., 'Charging operation details')"
+    )
+    safetyregulation: Optional[str] = Field(
+        None, description="Safety regulation (e.g., 'IEC 61000-2-2')"
+    )
+    mountingtype: Optional[str] = Field(
+        None, description="Mounting type (e.g., 'Fixed', 'Wall mounted')"
+    )
+    cable_length: Optional[str] = Field(
+        None, description="Cable length (e.g., '10m', '20m')"
+    )
+    
 
     @field_validator("fast_charger")
     def validate_fast_charger(cls, v):
