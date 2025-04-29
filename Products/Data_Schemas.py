@@ -41,10 +41,6 @@ class ProductDetailsSchema(BaseModel):
         None, description="Ingress protection rating (e.g., 'IP65')"
     )
 
-    breadth: Optional[float] = Field(
-        None, description="Breadth in meters"
-    )
-
     weight_in_kgs: Optional[float] = Field(
         None, description="Weight in kilograms"
     )
