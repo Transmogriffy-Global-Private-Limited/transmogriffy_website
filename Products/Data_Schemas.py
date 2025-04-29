@@ -34,11 +34,6 @@ class ProductDetailsSchema(BaseModel):
     ingress_protection: Optional[str] = Field(
         None, description="Ingress protection rating (e.g., 'IP65')"
     )
-    efficiency_in_percentage: Optional[float] = Field(
-        None,
-        alias="efficiency_in_percentage",
-        description="Efficiency in percentage (e.g., 95.5)",
-    )
     dimensions: Optional[str] = Field(
         None, description="Dimensions (e.g., 'W x D x H - 100x100x100mm')"
     )
