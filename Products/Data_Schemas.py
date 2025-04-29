@@ -28,21 +28,11 @@ class ProductDetailsSchema(BaseModel):
     communication: Optional[str] = Field(
         None, description="Communication protocol (e.g., 'Modbus, CAN')"
     )
-    minimum_operating_temperature: Optional[int] = Field(
-        None, description="Minimum operating temperature (°C), nullable"
-    )
-    maximum_operating_temperature: Optional[int] = Field(
-        None, description="Maximum operating temperature (°C)"
-    )
     cooling: Optional[str] = Field(
         None, description="Cooling method (e.g., 'Air cooled')"
     )
     ingress_protection: Optional[str] = Field(
         None, description="Ingress protection rating (e.g., 'IP65')"
-    )
-
-    weight_in_kgs: Optional[float] = Field(
-        None, description="Weight in kilograms"
     )
     efficiency_in_percentage: Optional[float] = Field(
         None,
@@ -96,19 +86,6 @@ class ProductDetailsSchema(BaseModel):
         if v_lower not in ["yes", "no"]:
             raise ValueError("fast_charger must be 'yes' or 'no'")
         return v_lower
-
-
-
-    @field_validator("maximum_operating_temperature")
-    def validate_temperature(cls, v):
-        if v is None:
-            return v
-        if v < -100 or v > 200:
-            raise ValueError(
-                "maximum_operating_temperature must be in a reasonable range (-100 to 200 °C)"
-            )
-        return v
-
 
 class AddProductSchema(BaseModel):
     name: str
