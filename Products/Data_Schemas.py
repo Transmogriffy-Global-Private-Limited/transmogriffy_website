@@ -101,23 +101,7 @@ class ProductDetailsSchema(BaseModel):
             raise ValueError("fast_charger must be 'yes' or 'no'")
         return v_lower
 
-    @field_validator("efficiency_in_percentage")
-    def validate_efficiency(cls, v):
-        if v is None:
-            return v
-        if not (0 <= v <= 100):
-            raise ValueError(
-                "efficiency_in_percentage must be between 0 and 100"
-            )
-        return v
 
-    @field_validator("length", "breadth", "height", "weight_in_kgs")
-    def validate_positive_floats(cls, v, field):
-        if v is None:
-            return v
-        if v <= 0:
-            raise ValueError(f"{field.name} must be a positive value")
-        return v
 
     @field_validator("maximum_operating_temperature")
     def validate_temperature(cls, v):
