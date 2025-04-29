@@ -4,8 +4,8 @@ from typing import List, Optional
 from pydantic import BaseModel, UUID4, Field, field_validator
 
 class ProductDetailsSchema(BaseModel):
-    voltage: Optional[str] = Field(
-        None, description="Voltage rating (e.g., '230V')"
+    input_voltage: Optional[str] = Field(
+        None, description="Input voltage (e.g., '230V')"
     )
     phase: Optional[str] = Field(
         None, description="Phase type (e.g., 'Single', 'Three')"
