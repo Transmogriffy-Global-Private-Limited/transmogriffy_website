@@ -74,7 +74,6 @@ async def authenticate_user(email: str, password: str):
     # Generate JWT token if 2FA is not enabled or OTP verification is successful
     token = await create_jwt(
         str(user.id),
-        int(user.user_number),
         expiration_duration=int(config("JWT_VALIDITY_FOR_NORMAL_SESSIONS")),
     )
     return user, token

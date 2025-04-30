@@ -83,7 +83,6 @@ async def authenticate_admin(email: str, password: str, otp_code: str = None):
     # Generate JWT
     token = await create_jwt(
         str(admin.id),
-        user_number="",
         expiration_duration=int(config("JWT_VALIDITY_FOR_NORMAL_SESSIONS")),
     )
     return admin, token
@@ -255,7 +254,7 @@ async def request_admin_password_reset(email: str) -> dict:
 
     # Prepare the email content
     email_content = await get_email_content(
-        "Password_Reset", username=admin.name, otp_code=otp_code
+        "password_reset", username=admin.name, otp_code=otp_code
     )
 
     # Send the OTP via email
@@ -415,16 +414,18 @@ async def generate_and_send_otp(admin_id: str, purpose: str) -> dict:
                 detail=f"Error generating OTP: {str(e)}",
             )
         
-    otp_template=purpose    
+    # Prepare the email content
+    values = {"username": admin.name, "otp_code": otp_code}
+    if purpose == OTPTypeEnum.TWO_FA:
+        content = await get_email_content("2fa_verification", **values)
+    elif purpose == OTPTypeEnum.MAIL_VERIFICATION:
+        content = await get_email_content("email_verification", **values)
+    elif purpose == OTPTypeEnum.PASSWORD_RESET:
+        content = await get_email_content("password_reset", **values)
 
-    # Prepare and send the OTP via email
-    email_content = await get_email_content(
-        otp_template, username=admin.name, otp_code=otp_code
-    )
+    # Send the email
     email_sent = await send_email(
-        to_email=admin.email,
-        subject=email_content["subject"],
-        body=email_content["body"],
+        to_email=admin.email, subject=content["subject"], body=content["body"]
     )
 
     if not email_sent:

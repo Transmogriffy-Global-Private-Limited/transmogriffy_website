@@ -125,7 +125,7 @@ async def generate_random_otp() -> str:
     return str(uuid.uuid4())[: int(config("OTP_DIGITS"))]
 
 
-async def create_jwt(user_id: str, user_number: int ,expiration_duration: int) -> str:
+async def create_jwt(user_id: str,expiration_duration: int) -> str:
     """
     Generates a JWT token containing the user ID and expiration date.
     """
@@ -134,7 +134,6 @@ async def create_jwt(user_id: str, user_number: int ,expiration_duration: int) -
 
     payload = {
         "user_id": user_id,
-        "usernumber": user_number,
         "exp": datetime.now(timezone.utc)
         + timedelta(minutes=expiration_duration),  # Token valid for 1 day
     }
