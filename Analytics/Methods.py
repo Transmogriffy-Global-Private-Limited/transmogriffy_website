@@ -1,3 +1,4 @@
+from math import prod
 from Database_and_ORM.Database_Models import Product, Order
 
 async def product_analytics():
@@ -49,11 +50,13 @@ async def product_stock_analysis():
 
         # Prevent negative stock
         remaining_stock = max(product.quantity - total_ordered, 0)
+        initial_stock = max(product.quantity + total_ordered,0)
 
         stock_results.append({
             "product_id": str(product.id),
             "product_name": product.name,
             "total_ordered": total_ordered,
+            "initial_stock":initial_stock,
             "remaining_stock": remaining_stock
         })
 
