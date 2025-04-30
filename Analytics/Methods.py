@@ -53,7 +53,6 @@ async def product_stock_analysis():
         stock_results.append({
             "product_id": str(product.id),
             "product_name": product.name,
-            "initial_stock": product.quantity,
             "total_ordered": total_ordered,
             "remaining_stock": remaining_stock
         })
