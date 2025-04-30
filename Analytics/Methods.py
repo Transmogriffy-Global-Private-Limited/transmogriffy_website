@@ -33,24 +33,22 @@ async def product_analytics():
 
     return analytics_results
 
-
 async def product_stock_analysis():
-
     stock_results = []
     products_in_stock = await Product.filter(is_listed=True)
 
     for product in products_in_stock:
-        orders = await Order.filter(productid=str(product.id))
-        
-        total_ordered = 0
-        for order in orders:
-            try:
-                quantity_ordered = int(order.ordered_quantity)
-            except (ValueError, TypeError):
-                quantity_ordered = 0
-            total_ordered += quantity_ordered
+        # Adjust field name to match your actual model
+        orders = await Order.filter(productid=product.id)
 
-        remaining_stock = product.quantity - total_ordered
+        total_ordered = sum(
+            int(order.ordered_quantity or 0)
+            for order in orders
+            if isinstance(order.ordered_quantity, (int, str))
+        )
+
+        # Prevent negative stock
+        remaining_stock = max(product.quantity - total_ordered, 0)
 
         stock_results.append({
             "product_id": str(product.id),
