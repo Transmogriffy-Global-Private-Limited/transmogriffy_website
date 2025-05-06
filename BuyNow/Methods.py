@@ -2,9 +2,8 @@ import uuid
 from typing import Dict
 from fastapi import HTTPException, status
 from Database_and_ORM.Database_Models import Product, BuyNow, Address, Transactions
-from logger import logger
-from Data_Schemas import BuyNowSchema,PaymentSchema,TransactionsSchema,OrderSchema
-
+from .Data_Schemas import BuyNowSchema,PaymentSchema,TransactionsSchema,OrderSchema
+from razorpay import Client
 
 async def buy_now(payload: Dict, buy_now_data: BuyNowSchema):
     userid = buy_now_data.user_id

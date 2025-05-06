@@ -16,6 +16,7 @@ from Order.Router import order_router
 from Payments.Router import payment_router
 from Contactus.Router import contact_router
 from Analytics.Router import analytics_router
+from BuyNow.Router import buynow_router
 
 
 @asynccontextmanager
