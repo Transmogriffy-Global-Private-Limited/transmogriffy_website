@@ -77,7 +77,8 @@ routers = [
     (order_router, "/order", ["Order"]),
     (payment_router, "/payments", ["Payments"]),
     (contact_router,'/contact',['ContactUs']),
-    (analytics_router,'/analytics',['Analytics'])
+    (analytics_router,'/analytics',['Analytics']),
+    (buynow_router,'/buynow',['BuyNow'])
 ]
 
 for router, prefix, tags in routers:

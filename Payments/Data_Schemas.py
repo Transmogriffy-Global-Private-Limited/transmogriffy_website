@@ -11,7 +11,7 @@ class ProductItemSchema(BaseModel):
 class PaymentSchema(BaseModel):
     user_id: str
     products: List[ProductItemSchema]
-    price: Optional[float] = None  # total price calculated on frontend or can be computed here too
+    price: Optional[float] = None
 
 class TransactionProductSchema(BaseModel):
     productid: str

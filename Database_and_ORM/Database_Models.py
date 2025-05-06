@@ -253,3 +253,18 @@ class ContactUs(Model):
     message = fields.TextField(default=None)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
+
+class BuyNow(Model):
+    id = fields.UUIDField(pk=True)
+    user_id = fields.CharField(max_length=600, description="ID of the user")
+    product_id = fields.CharField(max_length=600, description="ID of the product")
+    address_id = fields.CharField(max_length=600, description="ID of the delivery address")
+    quantity = fields.IntField(default=1, description="Quantity of the product")
+    price = fields.FloatField(description="Total price for the purchase")
+    payment_method = fields.CharField(max_length=100, description="Payment method used")
+    order_status = fields.CharField(max_length=100, description="Current status of the order")
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "buynow"
