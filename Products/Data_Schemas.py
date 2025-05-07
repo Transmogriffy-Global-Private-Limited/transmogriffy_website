@@ -98,6 +98,7 @@ class UpdateProductSchema(BaseModel):
     details: Optional[ProductDetailsSchema] = None
     quantity: Optional[int] = None
     price: Optional[float] = None
+    product_color: Optional[str] = None
     removed_images: Optional[List[str]] = None
 
 

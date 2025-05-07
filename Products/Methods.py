@@ -105,6 +105,7 @@ async def get_product(product_id: uuid) -> dict:
             "is_listed": product.is_listed,
             "image_paths": product.images,
             "quantity": product.quantity,
+            "product_color": product.product_color,
             "price": product.price,
         }
     except DoesNotExist:
@@ -145,6 +146,7 @@ async def get_all_products():
                     "is_listed": product.is_listed,
                     "image_paths": product.images,
                     "quantity": product.quantity,
+                    "product_color": product.product_color,
                     "price": product.price,
                 }
             )
