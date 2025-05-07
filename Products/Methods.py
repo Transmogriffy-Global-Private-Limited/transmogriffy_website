@@ -71,6 +71,7 @@ async def add_product(
         name=product_data.name,
         model=product_data.model,
         price=product_data.price,
+        product_color=product_data.product_color,
         quantity=product_data.quantity if product_data.quantity is not None else 1,
         details=product_data.details or {},
         images=image_urls
@@ -82,6 +83,7 @@ async def add_product(
         "model": product.model,
         "price": float(product.price),
         "quantity": product.quantity,
+        "product_color": product.product_color,
         "imageUrls": image_urls,
         "details": product.details
     }

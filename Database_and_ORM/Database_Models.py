@@ -170,6 +170,7 @@ class Product(Model):
     model = fields.CharField(max_length=255)
     details = fields.JSONField(default=dict)  # Add default empty dict
     quantity = fields.IntField(default=1)
+    product_color = fields.CharField(max_length=255)
     is_listed = fields.BooleanField(default=True)
     price = fields.FloatField(default=0.0)  # Add default value
     images = fields.JSONField(default=list)

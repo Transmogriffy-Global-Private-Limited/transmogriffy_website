@@ -86,6 +86,7 @@ class AddProductSchema(BaseModel):
     name: str
     model: str
     details: ProductDetailsSchema
+    product_color: Optional[str] = None
     quantity: Optional[int] = None
     price: float
 
