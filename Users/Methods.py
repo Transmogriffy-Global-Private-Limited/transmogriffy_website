@@ -548,9 +548,6 @@ async def get_profile_picture(payload: dict) -> dict:
 
 
 async def create_address(payload: dict, address_data: Dict) -> Dict:
-    """
-    Creates a new address for the logged-in user.
-    """
     user_id = payload.get("user_id")
     if not user_id:
         raise HTTPException(
@@ -565,11 +562,21 @@ async def create_address(payload: dict, address_data: Dict) -> Dict:
             detail="User not found.",
         )
 
-    # Ensure only one default address exists
+    address_type = address_data.get("type")
+    
+    # 🚫 Prevent duplicates for Home and Work
+    if address_type in ("Home", "Work"):
+        exists = await Address.filter(user=user, type=address_type).exists()
+        if exists:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"You already have a '{address_type}' address.",
+            )
+
+    # ✅ Reset old defaults if new one is being set
     if address_data.get("is_default"):
         await Address.filter(user=user).update(is_default=False)
 
-    # Create new address
     try:
         new_address = await Address.create(user=user, **address_data)
         return {

@@ -4,6 +4,7 @@ from fastapi import (
     status,
     Response,
     Header,
+	Body,
     Depends,
     File,
     UploadFile,
@@ -265,16 +266,12 @@ async def get_profile_picture_endpoint(payload=Depends(verify_jwt)):
 
 @User_Router.post("/address", status_code=status.HTTP_201_CREATED)
 async def create_address_endpoint(
-    payload=Depends(verify_jwt), address_data: AddressCreate = None
+    payload=Depends(verify_jwt),
+    address_data: AddressCreate = Body(...),
 ):
     """
     Creates a new address for the user.
     """
-    if not address_data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Address data is required.",
-        )
     return await create_address(payload, address_data.model_dump())
 
 
@@ -283,7 +280,7 @@ async def update_address_endpoint(
     address_type: AddressTypeEnum,
     custom_name: Optional[str] = None,
     payload=Depends(verify_jwt),
-    update_data: AddressUpdate = None,
+    update_data: AddressUpdate = Body(...)
 ):
     """
     Updates an address based on type (Home, Work, Other). If 'Other', a custom name is required.
