@@ -141,5 +141,5 @@ async def user_total_spent_and_orders(user_id: str):
         "user_id": user_id,
         "total_orders": total_orders,
         "total_spent": total_spent,
-        "purchase_times": order_times
+        "purchase_time": order_times
     }
