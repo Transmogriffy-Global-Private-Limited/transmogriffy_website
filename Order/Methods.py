@@ -72,6 +72,7 @@ async def get_allorders():
                 "deliveryaddress": order.deliveryaddress,
                 "user_name": userdata.name,
                 "user_email":userdata.email,
+                "purchase_time": order.created_at,
                 "address":order.deliveryaddress,
                 "user_phonenumber":userdata.phone_number
             }
