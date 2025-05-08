@@ -105,6 +105,7 @@ async def order_history(user_id: str):
                 "payment_option": order.paymentoption,
                 "order_status": order.orderstatus,
                 "deliveryaddress": order.deliveryaddress,
+                "purchase_time": order.created_at,
                 "user_id": order.userid
             }
 

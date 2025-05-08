@@ -89,7 +89,6 @@ async def total_sales():
     return total_sales_amount
 
 
-
 async def user_purchase_summary(user_id: str):
     orders = await Order.filter(userid=user_id)
     purchase_summary = {}
@@ -101,8 +100,10 @@ async def user_purchase_summary(user_id: str):
 
         pid = order.productid
         if pid not in purchase_summary:
-            purchase_summary[pid] = {"total_items": 0}
+            purchase_summary[pid] = {"total_items": 0, "order_times": []}
+
         purchase_summary[pid]["total_items"] += quantity
+        purchase_summary[pid]["order_times"].append(order.created_at)
 
     result_summary = []
     for pid, summary in purchase_summary.items():
@@ -114,7 +115,8 @@ async def user_purchase_summary(user_id: str):
             "product_id": pid,
             "product_name": product.name,
             "total_items_purchased": total_items,
-            "total_purchase_amount": total_amount
+            "total_purchase_amount": total_amount,
+            "purchase_time": summary["order_times"]
         })
 
     return result_summary
@@ -123,6 +125,7 @@ async def user_total_spent_and_orders(user_id: str):
     orders = await Order.filter(userid=user_id)
     total_spent = 0.0
     total_orders = len(orders)
+    order_times = []
 
     for order in orders:
         try:
@@ -132,9 +135,11 @@ async def user_total_spent_and_orders(user_id: str):
 
         product = await Product.get(id=order.productid)
         total_spent += product.price * quantity
+        order_times.append(order.created_at)
 
     return {
         "user_id": user_id,
         "total_orders": total_orders,
-        "total_spent": total_spent
+        "total_spent": total_spent,
+        "purchase_times": order_times
     }
