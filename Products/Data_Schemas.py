@@ -78,7 +78,7 @@ class ProductDetailsSchema(BaseModel):
         if v is None:
             return v
         v_lower = v.strip().lower()
-        if v_lower not in ["yes", "no"]:
+        if v_lower not in ["yes", "no", ""]:
             raise ValueError("fast_charger must be 'yes' or 'no'")
         return v_lower
 

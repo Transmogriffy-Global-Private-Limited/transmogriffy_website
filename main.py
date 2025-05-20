@@ -84,3 +84,31 @@ routers = [
 
 for router, prefix, tags in routers:
     app.include_router(router, prefix=prefix, tags=tags)
+
+from fastapi import Request, HTTPException
+from fastapi.responses import JSONResponse
+import traceback
+
+def safe_serialize(obj):
+    try:
+        return str(obj)
+    except Exception:
+        return "Unserializable error"
+
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    print (exc.detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": safe_serialize(exc.detail)},
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": safe_serialize(exc),
+            "trace": traceback.format_exc(limit=2),
+        },
+    )
