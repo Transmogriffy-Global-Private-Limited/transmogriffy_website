@@ -22,8 +22,8 @@ from Utility_Methods.Utility_Methods import (
     generate_random_otp,
     get_token_from_authorization_header_value,
 )
+from Utility_Methods.ranint import get_next_user_number
 import os
-
 
 async def create_user(user_data: UserCreate) -> Union[User, dict]:
     """
@@ -31,10 +31,12 @@ async def create_user(user_data: UserCreate) -> Union[User, dict]:
     """
     # Hash the password with a salt
     hashed_password = await get_hashed_password(user_data.password)
+    usernumber = await get_next_user_number()
 
     user = User(
         name=user_data.name,
         email=user_data.email,  # Defaults to False if not passed
+        user_number=usernumber,
         password=hashed_password,
         phone_number=user_data.phone_number,  # Defaults to False if not passed
     )
@@ -546,9 +548,6 @@ async def get_profile_picture(payload: dict) -> dict:
 
 
 async def create_address(payload: dict, address_data: Dict) -> Dict:
-    """
-    Creates a new address for the logged-in user.
-    """
     user_id = payload.get("user_id")
     if not user_id:
         raise HTTPException(
@@ -563,11 +562,21 @@ async def create_address(payload: dict, address_data: Dict) -> Dict:
             detail="User not found.",
         )
 
-    # Ensure only one default address exists
+    address_type = address_data.get("type")
+    
+    # 🚫 Prevent duplicates for Home and Work
+    if address_type in ("Home", "Work"):
+        exists = await Address.filter(user=user, type=address_type).exists()
+        if exists:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"You already have a '{address_type}' address.",
+            )
+
+    # ✅ Reset old defaults if new one is being set
     if address_data.get("is_default"):
         await Address.filter(user=user).update(is_default=False)
 
-    # Create new address
     try:
         new_address = await Address.create(user=user, **address_data)
         return {

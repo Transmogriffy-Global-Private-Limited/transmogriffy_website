@@ -5,21 +5,18 @@ from .Database_Schemas import ContactSchema
 from Utility_Methods.libs import email_sender
 
 async def savecontact(payload:dict,payload_data:ContactSchema):
-    name = payload_data.name
-    email= payload_data.email
-    contactno = payload_data.contactno
-    message = payload_data.message
     try:
         new_contact = await ContactUs.create(
             id = uuid.uuid4(),
-            name = name,
-            email =  email,
-            contactno = contactno,
-            message =  message
+            firstname = payload_data.firstname,
+            lastname = payload_data.lastname,
+            telephone = payload_data.telephone,
+            email =  payload_data.email,
+            message =  payload_data.message
         )
-        to = 'transmogrify13@outlook.com'
+        to = 'transmogrify08@outlook.com'
         subject = 'Received successfully'
-        text =  f'Contact details  Username - {name} user_email={email} contact_phoneno - {contactno} contact reason - message - {message} '
+        text =  f'Contact detail firstname - {new_contact.firstname} lastname -{new_contact.lastname} user_email={new_contact.email} contact_phoneno - {new_contact.telephone} contact reason - message - {new_contact.message} '
         email_sender(to,subject,text)
         return new_contact
     except Exception as e:
@@ -27,15 +24,16 @@ async def savecontact(payload:dict,payload_data:ContactSchema):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to save contact data: {str(e)}",
         )
+        
 
 async def see_all_contacts():
     try:
-        # Fetch all contacts from the database
-        all_contacts = await ContactUs.all()
-        serialized_contacts = [contact.to_dict() for contact in all_contacts]
-        return serialized_contacts
+        contacts: list[dict] = await ContactUs.all().values(
+            "id", "firstname", "lastname", "telephone", "email", "message"
+        )
+        return contacts
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}",
+            detail=f"Failed to retrieve contacts: {e}"
         )

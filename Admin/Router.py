@@ -5,6 +5,7 @@ from fastapi import (
     Response,
     Header,
     Body,
+    Query,
     Depends,
     File,
     UploadFile,
@@ -40,6 +41,7 @@ from Admin.Methods import (
 )
 
 from Database_and_ORM.Database_Models import Admin
+from typing import Optional
 
 Admin_Router = APIRouter()
 
@@ -78,8 +80,7 @@ async def login_admin_endpoint(response: Response, admin_data: AdminUpdate):
 
 @Admin_Router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout_admin_endpoint(
-    authorization: str = Header(None),
-    payload: dict = Depends(verify_jwt),
+    authorization: str = Header("Authorization"),
 ):
     """
     Logs out the admin by blacklisting the JWT token.
@@ -89,7 +90,7 @@ async def logout_admin_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot verify admin",
         )
-    return await logout_admin(authorization)
+    return await logout_admin(authorization=authorization)
 
 
 @Admin_Router.patch("/update", status_code=status.HTTP_200_OK)
@@ -204,18 +205,24 @@ async def get_profile_picture_endpoint(payload=Depends(verify_jwt)):
     return await get_admin_profile_picture(payload)
 
 
+
 @Admin_Router.get("/view-users", status_code=status.HTTP_200_OK)
 async def view_users_endpoint(
-    payload: dict = Depends(verify_jwt),
-    view_users_request: ViewUsersRequest = Body(...),
+	payload: dict = Depends(verify_jwt),
+	user_id: Optional[str] = Query(
+		default=None,
+		description="The ID of the user to retrieve"
+	),
+	limit: Optional[str] = Query(
+		default=None,
+		pattern=r"^\d+-\d+$",
+		description="Pagination range in 'start-end' format"
+	),
 ):
-    """
-    Allows the admin to view user data. Supports pagination.
-    """
-    return await view_user_data(
-        payload, view_users_request.user_id, view_users_request.limit
-    )
-
+	"""
+	Allows the admin to view user data. Supports pagination.
+	"""
+	return await view_user_data(payload, user_id, limit)
 
 @Admin_Router.post("/otp/verify/email", status_code=status.HTTP_200_OK)
 async def verify_email_otp_endpoint(
@@ -238,4 +245,4 @@ async def generate_otp_endpoint(otp_request: OTPRequest):
     """
     Generates and sends an OTP for the specified purpose.
     """
-    return await generate_and_send_otp(otp_request.email, otp_request.purpose)
+    return await generate_and_send_otp(otp_request.id, otp_request.purpose)

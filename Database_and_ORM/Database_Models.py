@@ -6,6 +6,7 @@ from Users.Data_Schemas import RoleEnum, OTPTypeEnum, AddressTypeEnum
 
 class User(Model):
     id = fields.UUIDField(pk=True)  # Primary key field
+    user_number = fields.IntField(unique=True)
     name = fields.CharField(max_length=100)
     email = fields.CharField(max_length=100, unique=True)
     email_verified = fields.BooleanField(default=False)
@@ -165,14 +166,15 @@ class Admin(Model):
 
 class Product(Model):
     id = fields.UUIDField(pk=True)
-    name = fields.CharField(max_length=255, description="Product Name")
-    model = fields.CharField(max_length=255, description="Product Model")
-    details = fields.JSONField(description="Additional Product Details")
+    name = fields.CharField(max_length=255)
+    model = fields.CharField(max_length=255)
+    details = fields.JSONField(default=dict)  # Add default empty dict
     quantity = fields.IntField(default=1)
+    product_color = fields.CharField(max_length=255)
     is_listed = fields.BooleanField(default=True)
-    price = fields.FloatField(null=False)
-    images = fields.TextField(null=True)
-
+    price = fields.FloatField(default=0.0)  # Add default value
+    images = fields.JSONField(default=list)
+    
     class Meta:
         table = "product"
 
@@ -207,7 +209,6 @@ class Cart(Model):
     class Meta:
         table = "cart"
 
-
 class Order(Model):
     id = fields.UUIDField(pk=True)
     userid = fields.CharField(default=None, max_length=600)
@@ -216,6 +217,7 @@ class Order(Model):
     paymentoption = fields.CharField(default=None, max_length=600)
     orderstatus = fields.CharField(default=None, max_length=600)
     ordered_quantity = fields.CharField(default=None, max_length=600)
+    deliveryaddress = fields.CharField(default=None,max_length=600)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
@@ -229,6 +231,7 @@ class Payments(Model):
     currency = fields.CharField(default=None, max_length=600)
     receipt = fields.CharField(default=None, max_length=600)
     notes = fields.CharField(default=None, max_length=600)
+    paymentstatus = fields.CharField(default=None, max_length=600)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
@@ -244,9 +247,25 @@ class Transactions(Model):
 
 class ContactUs(Model):
     id = fields.UUIDField(pk=True)
-    name = fields.CharField(default=None, max_length=1200)
+    firstname = fields.CharField(default=None, max_length=1200)
+    lastname = fields.CharField(default=None, max_length=1200)
+    telephone = fields.CharField(default=None, max_length=1200)
     email = fields.CharField(default=None,max_length=1200)
-    contactno =  fields.CharField(default=None,max_length=1200)
     message = fields.TextField(default=None)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
+
+class BuyNow(Model):
+    id = fields.UUIDField(pk=True)
+    user_id = fields.CharField(max_length=600, description="ID of the user")
+    product_id = fields.CharField(max_length=600, description="ID of the product")
+    address_id = fields.CharField(max_length=600, description="ID of the delivery address")
+    quantity = fields.IntField(default=1, description="Quantity of the product")
+    price = fields.FloatField(description="Total price for the purchase")
+    payment_method = fields.CharField(max_length=100, description="Payment method used")
+    order_status = fields.CharField(max_length=100, description="Current status of the order")
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "buynow"

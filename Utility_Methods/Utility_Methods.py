@@ -125,7 +125,7 @@ async def generate_random_otp() -> str:
     return str(uuid.uuid4())[: int(config("OTP_DIGITS"))]
 
 
-async def create_jwt(user_id: str, expiration_duration: int) -> str:
+async def create_jwt(user_id: str,expiration_duration: int) -> str:
     """
     Generates a JWT token containing the user ID and expiration date.
     """
@@ -176,7 +176,7 @@ async def verify_admin_otp(
     # Check OTP existence and expiration
     if otp_entry and otp_entry.expiration > datetime.now(timezone.utc):
         # OTP is valid; delete it after successful verification
-        await otp_entry.delete()
+        await AdminOTP.filter(otp_code=otp_entry.otp_code).delete()
         return True
     else:
         raise HTTPException(

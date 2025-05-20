@@ -42,8 +42,10 @@ class TwoFARequest(BaseModel):
 
 
 class OTPRequest(BaseModel):
-    email: EmailStr
+    email: Optional[EmailStr]= None
     purpose: OTPTypeEnum
+    id: Optional[str] = None
+    otp_code: Optional[str]=None
 
 
 class PasswordResetRequest(BaseModel):

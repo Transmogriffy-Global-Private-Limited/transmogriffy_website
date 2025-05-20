@@ -15,6 +15,8 @@ from os import path
 from Order.Router import order_router
 from Payments.Router import payment_router
 from Contactus.Router import contact_router
+from Analytics.Router import analytics_router
+from BuyNow.Router import buynow_router
 
 
 @asynccontextmanager
@@ -39,6 +41,8 @@ middlewares = [
             "User_Type",
             "user_type",
             "User_type",
+            "Two_Factor_Enabled",
+            "two_factor_enabled",
         ],
     ),
     Middleware(VerifyAPIKeyMiddleware),
@@ -73,8 +77,38 @@ routers = [
     (cart_router, "/cart", ["Cart"]),
     (order_router, "/order", ["Order"]),
     (payment_router, "/payments", ["Payments"]),
-    (contact_router,'/contact',['ContactUs'])
+    (contact_router,'/contact',['ContactUs']),
+    (analytics_router,'/analytics',['Analytics']),
+    (buynow_router,'/buynow',['BuyNow'])
 ]
 
 for router, prefix, tags in routers:
     app.include_router(router, prefix=prefix, tags=tags)
+
+from fastapi import Request, HTTPException
+from fastapi.responses import JSONResponse
+import traceback
+
+def safe_serialize(obj):
+    try:
+        return str(obj)
+    except Exception:
+        return "Unserializable error"
+
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    print (exc.detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": safe_serialize(exc.detail)},
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": safe_serialize(exc),
+            "trace": traceback.format_exc(limit=2),
+        },
+    )
