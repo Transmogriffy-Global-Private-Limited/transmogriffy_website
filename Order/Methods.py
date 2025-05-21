@@ -157,21 +157,39 @@ async def order_status_update(order_status: OrderStatusSchema):
 
 async def cancel_order(order_id: str):
     try:
-        
+        # Fetch the order
         order = await Order.get(id=order_id)
         if not order:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Order with ID {order_id} not found."
             )
+
+        # Allow cancellation only if the order is still pending
+        if order.orderstatus.lower() != "pending":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Order {order_id} cannot be canceled because its status is '{order.orderstatus}'. Only 'pending' orders can be canceled."
+            )
+
+        # Update order status to canceled
         order.orderstatus = "canceled"
         await order.save()
+
+        # Restock product
         product = await Product.get(id=order.productid)
         updated_quantity = product.quantity + int(order.ordered_quantity)
         await Product.filter(id=order.productid).update(quantity=updated_quantity)
 
-        return {"message": f"Order {order_id} canceled successfully and product restocked."}
+        return {
+            "message": f"Order {order_id} canceled successfully. {order.ordered_quantity} units restocked."
+        }
 
+    except DoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Order or product not found."
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
