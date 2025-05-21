@@ -2,8 +2,14 @@ from fastapi import APIRouter, Depends, Header, status, HTTPException, Body
 
 from .Methods import order_create, order_history, order_status_update,get_allorders,cancel_order
 from .Data_Schemas import OrderDupSchema, StandAloneUserId,OrderStatusSchema
+from pydantic import BaseModel
 
 order_router = APIRouter()
+
+
+
+class CancelOrderRequest(BaseModel):
+    order_id: str
 
 
 @order_router.post("/addorder", status_code=status.HTTP_200_OK)
@@ -31,5 +37,5 @@ async def list_of_orders():
     return await get_allorders()
 
 @order_router.post("/cancelorder", status_code=status.HTTP_200_OK)
-async def cancel_order_endpoint(order_id: str):
-    return await cancel_order(order_id)
+async def cancel_order_endpoint(payload: CancelOrderRequest):
+    return await cancel_order(payload.order_id)

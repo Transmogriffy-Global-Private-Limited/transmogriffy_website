@@ -32,7 +32,7 @@ class VerifyAPIKeyMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Fetch API key from request headers and compare with the valid key
-        api_key = request.headers.get("API-Key")
+        api_key = request.headers.get("API-KEY")
         valid_api_key = config("API_KEY")
 
         if not api_key:

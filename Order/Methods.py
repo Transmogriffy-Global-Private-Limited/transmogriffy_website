@@ -7,6 +7,8 @@ import shutil
 from decouple import config
 from .Data_Schemas import OrderSchema,OrderDupSchema,OrderStatusSchema
 from Database_and_ORM.Database_Models import Order, Cart, Product,User
+from fastapi import HTTPException, status
+from tortoise.exceptions import DoesNotExist
 
 async def order_create(payload: dict, order_data: OrderDupSchema):
     user_id = order_data.user_id
@@ -157,21 +159,39 @@ async def order_status_update(order_status: OrderStatusSchema):
 
 async def cancel_order(order_id: str):
     try:
-        
+        # Fetch the order
         order = await Order.get(id=order_id)
         if not order:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Order with ID {order_id} not found."
             )
+
+        # Check if cancellation is allowed
+        if str(order.orderstatus).strip().lower() not in ["", "none", "null", "pending"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Order {order.id} cannot be canceled because its status is '{order.orderstatus}'. Only 'pending' or null status orders can be canceled."
+            )
+
+        # Update order status
         order.orderstatus = "canceled"
         await order.save()
+
+        # Restock product
         product = await Product.get(id=order.productid)
         updated_quantity = product.quantity + int(order.ordered_quantity)
         await Product.filter(id=order.productid).update(quantity=updated_quantity)
 
-        return {"message": f"Order {order_id} canceled successfully and product restocked."}
+        return {
+            "message": f"Order {order.id} canceled successfully. {order.ordered_quantity} units restocked."
+        }
 
+    except DoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order or product not found."
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
