@@ -7,6 +7,8 @@ import shutil
 from decouple import config
 from .Data_Schemas import OrderSchema,OrderDupSchema,OrderStatusSchema
 from Database_and_ORM.Database_Models import Order, Cart, Product,User
+from fastapi import HTTPException, status
+from tortoise.exceptions import DoesNotExist
 
 async def order_create(payload: dict, order_data: OrderDupSchema):
     user_id = order_data.user_id
@@ -165,14 +167,14 @@ async def cancel_order(order_id: str):
                 detail=f"Order with ID {order_id} not found."
             )
 
-        # Allow cancellation only if the order is still pending
-        if order.orderstatus.lower() != "pending":
+        # Check if cancellation is allowed
+        if str(order.orderstatus).strip().lower() not in ["", "none", "null", "pending"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Order {order_id} cannot be canceled because its status is '{order.orderstatus}'. Only 'pending' orders can be canceled."
+                detail=f"Order {order.id} cannot be canceled because its status is '{order.orderstatus}'. Only 'pending' or null status orders can be canceled."
             )
 
-        # Update order status to canceled
+        # Update order status
         order.orderstatus = "canceled"
         await order.save()
 
@@ -182,13 +184,13 @@ async def cancel_order(order_id: str):
         await Product.filter(id=order.productid).update(quantity=updated_quantity)
 
         return {
-            "message": f"Order {order_id} canceled successfully. {order.ordered_quantity} units restocked."
+            "message": f"Order {order.id} canceled successfully. {order.ordered_quantity} units restocked."
         }
 
     except DoesNotExist:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Order or product not found."
+            detail="Order or product not found."
         )
     except Exception as e:
         raise HTTPException(
