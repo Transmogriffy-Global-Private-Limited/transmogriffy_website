@@ -35,7 +35,7 @@ async def verify_admin(payload: dict):
         )
     return admin
 
-CLOUDINARY_URL = config("CLOUDINARY_URL")
+CLOUDINARY_URL = "cloudinary://213157728231378:qXt8gDHTiPYNBo1n_KVE7g1L31k@dpvcfsbp3"
 uploadpath = "transevwebsite/uploads/productimages/"
 
 async def add_product(
@@ -49,13 +49,18 @@ async def add_product(
     image_urls = []
 
     if files:
-        cloudinary.config(secure=True)
+        cloudinary.config(
+        cloud_name="dpvcfsbp3",
+        api_key="213157728231378",
+        api_secret="qXt8gDHTiPYNBo1n_KVE7g1L31k",
+        secure=True
+    )
         for file in files:
             try:
                 upload_result = cloudinary.uploader.upload(
                     file.file,
                     public_id=f"{uploadpath}{product_id}/{file.filename.split('.')[0]}",
-                    overwrite=False,
+                    overwrite=True,
                     resource_type="auto"
                 )
                 image_urls.append(upload_result["secure_url"])
@@ -170,11 +175,11 @@ async def update_product(
 ) -> dict:
     """Updates product with Cloudinary image management."""
     await verify_admin(payload)
-    
+   
     try:
         product = await Product.get(id=product_data.id)
         current_images = product.images.copy()
-        
+       
         # Remove specified images
         if product_data.removed_images:
             current_images = [
@@ -184,11 +189,16 @@ async def update_product(
 
         # Add new images
         if files:
-            cloudinary.config(secure=True)
+            cloudinary.config(
+            cloud_name="dpvcfsbp3",
+            api_key="213157728231378",
+            api_secret="qXt8gDHTiPYNBo1n_KVE7g1L31k",
+            secure=True
+        )
             for file in files:
                 filename_base = os.path.splitext(file.filename)[0]
                 file_extension = os.path.splitext(file.filename)[1][1:]
-                
+               
                 upload_result = cloudinary.uploader.upload(
                     file.file,
                     folder=f"{uploadpath}{product.id}",
@@ -207,7 +217,7 @@ async def update_product(
         update_data["images"] = current_images
 
         await Product.filter(id=product.id).update(**update_data)
-        
+       
         return {
             "id": str(product.id),
             **update_data,
