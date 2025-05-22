@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException, status
 from Database_and_ORM.Database_Models import ClickEvent
 from ctrcompute.Database_Schemas import ClickEventSchema
 import logging
+from typing import Dict
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
