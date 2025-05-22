@@ -17,6 +17,7 @@ from Payments.Router import payment_router
 from Contactus.Router import contact_router
 from Analytics.Router import analytics_router
 from BuyNow.Router import buynow_router
+from ctrcompute.Router import ctrcompute_router
 
 
 @asynccontextmanager
@@ -79,7 +80,8 @@ routers = [
     (payment_router, "/payments", ["Payments"]),
     (contact_router,'/contact',['ContactUs']),
     (analytics_router,'/analytics',['Analytics']),
-    (buynow_router,'/buynow',['BuyNow'])
+    (buynow_router,'/buynow',['BuyNow']),
+    (ctrcompute_router,'/ctrcompute',['CTRCompute'])
 ]
 
 for router, prefix, tags in routers:

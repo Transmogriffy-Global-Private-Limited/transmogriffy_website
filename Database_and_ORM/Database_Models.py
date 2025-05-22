@@ -269,3 +269,24 @@ class BuyNow(Model):
 
     class Meta:
         table = "buynow"
+
+class ClickEvent(Model):
+    id = fields.UUIDField(pk=True)
+    user_id = fields.CharField(max_length=100, null=True)
+    session_id = fields.CharField(max_length=100, null=True)
+    page_url = fields.TextField()
+    element_id = fields.CharField(max_length=255, null=True)  
+    element_class = fields.CharField(max_length=255, null=True) 
+    element_text = fields.TextField(null=True) 
+    click_x = fields.IntField(null=True)
+    click_y = fields.IntField(null=True)
+    referrer = fields.TextField(null=True)
+    user_agent = fields.TextField(null=True)
+    ip_address = fields.CharField(max_length=45, null=True)     
+    timestamp = fields.DatetimeField(auto_now_add=True)
+
+    class Meta:
+        table = "click_events"
+
+    def __str__(self):
+        return f"ClickEvent(user={self.user_id}, element={self.element_id}, page={self.page_url})"
