@@ -163,7 +163,7 @@ async def order_status_update(order_status: OrderStatusSchema):
 async def cancel_order(order_id: str, reasonforcancel: str):
     try:
         # Ensure reason is provided
-        if not reasonforcancel.strip():
+        if not reasonforcancel and reasonforcancel == "":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cancellation reason must be provided."
