@@ -10,6 +10,7 @@ order_router = APIRouter()
 
 class CancelOrderRequest(BaseModel):
     order_id: str
+    reasonforcancel: str
 
 
 @order_router.post("/addorder", status_code=status.HTTP_200_OK)
@@ -38,4 +39,4 @@ async def list_of_orders():
 
 @order_router.post("/cancelorder", status_code=status.HTTP_200_OK)
 async def cancel_order_endpoint(payload: CancelOrderRequest):
-    return await cancel_order(payload.order_id)
+    return await cancel_order(payload.order_id,payload.reasonforcancel)

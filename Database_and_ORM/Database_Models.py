@@ -218,6 +218,7 @@ class Order(Model):
     orderstatus = fields.CharField(default=None, max_length=600)
     ordered_quantity = fields.CharField(default=None, max_length=600)
     deliveryaddress = fields.CharField(default=None,max_length=600)
+    reasonforcancel = fields.CharField(default=None,max_length=600,null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
