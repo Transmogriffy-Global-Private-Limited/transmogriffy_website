@@ -160,14 +160,27 @@ async def order_status_update(order_status: OrderStatusSchema):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update order status: {str(e)}"
         )
-async def cancel_order(order_id: str, reasonforcancel: str):
+async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel: str):
     try:
-        # Ensure reason is provided
-        if not reasonforcancel and reasonforcancel == "":
+        # Validate reason
+        if not reasonforcancel or reasonforcancel == "":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cancellation reason must be provided."
             )
+
+        # Check if 'other' is selected and validate otherreasonforcancel
+        if reasonforcancel == "other":
+            if not otherreasonforcancel or otherreasonforcancel == "":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Please specify the cancellation reason in 'otherreasonforcancel'."
+                )
+            final_reason = "other"
+            other_reason_value = otherreasonforcancel
+        else:
+            final_reason = reasonforcancel
+            other_reason_value = None
 
         # Fetch the order
         order = await Order.get(id=order_id)
@@ -177,25 +190,25 @@ async def cancel_order(order_id: str, reasonforcancel: str):
                 detail=f"Order with ID {order_id} not found."
             )
 
-        current_status = str(order.orderstatus).strip().lower()
-
-        # Check if the order is already canceled
-        if current_status == "canceled":
+        # Check if already canceled
+        if order.orderstatus == "canceled":
             return {
                 "message": f"Order {order.id} has already been canceled.",
-                "existing_cancellation_reason": order.reasonforcancel
+                "existing_cancellation_reason": order.reasonforcancel,
+                "custom_reason": order.otherreasonforcancel
             }
 
-        # Check if cancellation is allowed
-        if current_status not in ["", "none", "null", "pending"]:
+        # Only allow cancellation if status is pending or null/empty
+        if order.orderstatus not in ["", "none", "null", "pending"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Order {order.id} cannot be canceled because its status is '{order.orderstatus}'. Only 'pending' or null status orders can be canceled."
             )
 
-        # Update order status and cancellation reason
+        # Update order status and reason
         order.orderstatus = "canceled"
-        order.reasonforcancel = reasonforcancel
+        order.reasonforcancel = final_reason
+        order.otherreasonforcancel = other_reason_value
         await order.save()
 
         # Restock product
@@ -205,7 +218,8 @@ async def cancel_order(order_id: str, reasonforcancel: str):
 
         return {
             "message": f"Order {order.id} canceled successfully. {order.ordered_quantity} units restocked.",
-            "cancellation_reason": reasonforcancel
+            "cancellation_reason": final_reason,
+            "custom_reason": other_reason_value
         }
 
     except DoesNotExist:
