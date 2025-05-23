@@ -187,7 +187,7 @@ async def cancel_order(order_id: str, reasonforcancel: str):
             }
 
         # Check if cancellation is allowed
-        if current_status not in ["", "none", "null", "accepted"]:
+        if current_status not in ["", "none", "null", "pending"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Order {order.id} cannot be canceled because its status is '{order.orderstatus}'. Only 'pending' or null status orders can be canceled."
