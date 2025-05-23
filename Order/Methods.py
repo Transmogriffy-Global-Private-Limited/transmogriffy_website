@@ -79,7 +79,11 @@ async def get_allorders():
                 "user_email":userdata.email,
                 "purchase_time": order.created_at,
                 "address":order.deliveryaddress,
-                "user_phonenumber":userdata.phone_number
+                "user_phonenumber":userdata.phone_number,
+                "reasonforcancel":order.reasonforcancel,
+                "otherreasonforcancel":order.otherreasonforcancel,
+                "created_at":order.created_at,
+                "updated_at":order.updated_at
             }
             order_with_up.append(order_details)
         return order_with_up
