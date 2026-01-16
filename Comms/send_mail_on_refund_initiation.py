@@ -26,7 +26,7 @@ def _paise_to_rupees_str(paise: Optional[int]) -> str:
 async def send_mail_on_refund_initiation(
     order_id: str,
     *,
-    template_name: str = "refund_initiated",
+    template_name: str = "refundinitiated",
     brand_name: Optional[str] = None,
     support_email: Optional[str] = None,
 ) -> Dict[str, Any]:
