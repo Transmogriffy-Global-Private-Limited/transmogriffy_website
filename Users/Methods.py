@@ -25,28 +25,69 @@ from Utility_Methods.Utility_Methods import (
 from Utility_Methods.ranint import get_next_user_number
 import os
 
-async def create_user(user_data: UserCreate) -> Union[User, dict]:
+# async def create_user(user_data: UserCreate) -> Union[User, dict]:
+#     """
+#     Creates a new user in the database with hashed password.
+#     """
+#     # Hash the password with a salt
+#     hashed_password = await get_hashed_password(user_data.password)
+#     usernumber = await get_next_user_number()
+
+#     user = User(
+#         name=user_data.name,
+#         email=user_data.email,  # Defaults to False if not passed
+#         user_number=usernumber,
+#         password=hashed_password,
+#         phone_number=user_data.phone_number,  # Defaults to False if not passed
+#     )
+
+#     try:
+#         await user.save()
+#         return {"message": "Account succesfully created!"}
+#     except IntegrityError:
+#         return {"error": "A user with same details already exists."}
+
+async def create_user(user_data: UserCreate):
     """
-    Creates a new user in the database with hashed password.
+    Creates a new user in the database with hashed password
+    and returns a JWT token on successful signup.
     """
-    # Hash the password with a salt
     hashed_password = await get_hashed_password(user_data.password)
     usernumber = await get_next_user_number()
 
     user = User(
         name=user_data.name,
-        email=user_data.email,  # Defaults to False if not passed
+        email=user_data.email,
         user_number=usernumber,
         password=hashed_password,
-        phone_number=user_data.phone_number,  # Defaults to False if not passed
+        phone_number=user_data.phone_number,
     )
 
     try:
         await user.save()
-        return {"message": "Account succesfully created!"}
-    except IntegrityError:
-        return {"error": "A user with same details already exists."}
 
+        token = await create_jwt(
+            str(user.id),
+            expiration_duration=int(config("JWT_VALIDITY_FOR_NORMAL_SESSIONS")),
+        )
+
+        return {
+            "message": "Account successfully created!",
+            "token": token,
+            "user": {
+                "id": str(user.id),
+                "name": user.name,
+                "email": user.email,
+                "user_number": user.user_number,
+                "phone_number": user.phone_number,
+            },
+        }
+
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A user with same details already exists.",
+        )
 
 async def authenticate_user(email: str, password: str):
     """

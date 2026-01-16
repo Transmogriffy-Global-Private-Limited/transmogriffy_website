@@ -1,2 +1,7 @@
 [tool.black]
 line-length = 79
+
+[tool.aerich]
+tortoise_orm = "Database_and_ORM.Methods.TORTOISE_ORM"
+location = "./migrations"
+src_folder = "./."

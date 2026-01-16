@@ -2,6 +2,7 @@ from sqlalchemy import null
 from tortoise import fields
 from tortoise.models import Model
 from Users.Data_Schemas import RoleEnum, OTPTypeEnum, AddressTypeEnum
+from enum import Enum
 
 
 class User(Model):
@@ -173,6 +174,7 @@ class Product(Model):
     product_color = fields.CharField(max_length=255)
     is_listed = fields.BooleanField(default=True)
     price = fields.FloatField(default=0.0)  # Add default value
+    mrp = fields.FloatField(default=0.0)  # ✅ added
     images = fields.JSONField(default=list)
     
     class Meta:
@@ -215,9 +217,12 @@ class Order(Model):
     productid = fields.CharField(default=None, max_length=600)
     totalamount = fields.CharField(default=None, max_length=600)
     paymentoption = fields.CharField(default=None, max_length=600)
+    rzp_payment_id = fields.CharField(default="default_id", max_length = 600)
     orderstatus = fields.CharField(default=None, max_length=600)
     ordered_quantity = fields.CharField(default=None, max_length=600)
     deliveryaddress = fields.CharField(default=None,max_length=600)
+    reasonforcancel = fields.CharField(default=None,max_length=600,null=True)
+    otherreasonforcancel = fields.CharField(default=None,max_length=600,null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
@@ -252,6 +257,7 @@ class ContactUs(Model):
     telephone = fields.CharField(default=None, max_length=1200)
     email = fields.CharField(default=None,max_length=1200)
     message = fields.TextField(default=None)
+    contacted_at = fields.DatetimeField(null=False)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
@@ -269,3 +275,62 @@ class BuyNow(Model):
 
     class Meta:
         table = "buynow"
+
+class ClickEvent(Model):
+    id = fields.UUIDField(pk=True)
+    user_id = fields.CharField(max_length=100, null=True)
+    session_id = fields.CharField(max_length=100, null=True)
+    page_url = fields.TextField()
+    element_id = fields.CharField(max_length=255, null=True)  
+    element_class = fields.CharField(max_length=255, null=True) 
+    element_text = fields.TextField(null=True) 
+    click_x = fields.IntField(null=True)
+    click_y = fields.IntField(null=True)
+    referrer = fields.TextField(null=True)
+    user_agent = fields.TextField(null=True)
+    ip_address = fields.CharField(max_length=45, null=True)     
+    timestamp = fields.DatetimeField(auto_now_add=True)
+
+    class Meta:
+        table = "click_events"
+
+    def __str__(self):
+        return f"ClickEvent(user={self.user_id}, element={self.element_id}, page={self.page_url})"
+
+class RefundStatusEnum(str, Enum):
+    CREATED = "created"
+    PENDING = "pending"
+    PROCESSED = "processed"
+    FAILED = "failed"
+
+
+class Refund_Instances(Model):
+    id = fields.UUIDField(pk=True)  # internal
+
+    rzp_payment_id = fields.CharField(max_length=600)
+    rzp_refund_id = fields.CharField(
+        max_length=600,
+        null=True,        # null until Razorpay responds
+        unique=True
+    )
+
+    order_id = fields.CharField(max_length=600)
+
+    total_order_amount_paise = fields.IntField()
+    refund_amount_paise = fields.IntField()
+
+    refund_status = fields.CharEnumField(
+        RefundStatusEnum,
+        default=RefundStatusEnum.CREATED,
+        max_length=20,
+    )
+
+    failure_reason = fields.TextField(null=True)
+
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+
+    class Meta:
+        table = "refund_instances"
+        ordering = ["-created_at"]

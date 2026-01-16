@@ -28,6 +28,9 @@ class ProductDetailsSchema(BaseModel):
     communication: Optional[str] = Field(
         None, description="Communication protocol (e.g., 'Modbus, CAN')"
     )
+    ocpp_present: Optional[str] = Field(
+        None, description="Whether OCPP is supported"
+    )
     cooling: Optional[str] = Field(
         None, description="Cooling method (e.g., 'Air cooled')"
     )
@@ -89,6 +92,7 @@ class AddProductSchema(BaseModel):
     product_color: Optional[str] = None
     quantity: Optional[int] = None
     price: float
+    mrp: float
 
 
 class UpdateProductSchema(BaseModel):
@@ -98,6 +102,7 @@ class UpdateProductSchema(BaseModel):
     details: Optional[ProductDetailsSchema] = None
     quantity: Optional[int] = None
     price: Optional[float] = None
+    mrp: Optional[float] = None
     product_color: Optional[str] = None
     removed_images: Optional[List[str]] = None
 

@@ -76,6 +76,7 @@ async def add_product(
         name=product_data.name,
         model=product_data.model,
         price=product_data.price,
+        mrp=product_data.mrp,
         product_color=product_data.product_color,
         quantity=product_data.quantity if product_data.quantity is not None else 1,
         details=product_data.details or {},
@@ -87,6 +88,7 @@ async def add_product(
         "name": product.name,
         "model": product.model,
         "price": float(product.price),
+        "mrp": float(product.mrp),
         "quantity": product.quantity,
         "product_color": product.product_color,
         "imageUrls": image_urls,
@@ -112,6 +114,7 @@ async def get_product(product_id: uuid) -> dict:
             "quantity": product.quantity,
             "product_color": product.product_color,
             "price": product.price,
+            "mrp": product.mrp
         }
     except DoesNotExist:
         raise HTTPException(
@@ -153,6 +156,7 @@ async def get_all_products():
                     "quantity": product.quantity,
                     "product_color": product.product_color,
                     "price": product.price,
+                    "mrp": product.mrp
                 }
             )
 
@@ -243,6 +247,7 @@ async def toggle_product_listing(
             "model": product.model,
             "is_listed": product.is_listed,
             "price": product.price,
+            "mrp": product.mrp,
             "message": f"Product listing {'enabled' if product.is_listed else 'disabled'} successfully",
         }
     except DoesNotExist:
@@ -286,6 +291,7 @@ async def get_delisted_products(payload: dict, limit: str) -> dict:
                 "details": product.details,
                 "is_listed": product.is_listed,
                 "price": product.price,
+                "mrp": product.mrp,
                 "image_paths": product.images,
             }
             for product in products

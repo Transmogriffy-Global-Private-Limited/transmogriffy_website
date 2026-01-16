@@ -26,4 +26,75 @@ email_templates = {
             "This code will expire in 10 minutes. If you did not sign up, please ignore this email."
         ),
     },
+        "ordercreated": {
+        "subject": "Order placed successfully (User: {username})",
+        "body": (
+            "Hi {username},\n\n"
+            "Your order has been placed successfully.\n\n"
+            "Order summary:\n"
+            "{order_summary}\n\n"
+            "Delivery address: {delivery_address}\n"
+            "Payment option: {payment_option}\n\n"
+            "Thanks,\n"
+            "Team"
+        ),
+    },
+
+    "updatedorder": {
+        "subject": "Order status update: {order_id}",
+        "body": (
+            "Hi {username},\n\n"
+            "Your order status has been updated.\n\n"
+            "Order ID: {order_id}\n"
+            "Product: {product_name} ({product_model})\n"
+            "Quantity: {quantity}\n"
+            "Old status: {old_status}\n"
+            "New status: {new_status}\n\n"
+            "Thanks,\n"
+            "Team"
+        ),
+    },
+
+    "canceledorder": {
+        "subject": "Order canceled: {order_id}",
+        "body": (
+            "Hi {username},\n\n"
+            "Your order has been canceled.\n\n"
+            "Order ID: {order_id}\n"
+            "Product: {product_name} ({product_model})\n"
+            "Quantity: {quantity}\n"
+            "Reason: {reason}\n\n"
+            "Thanks,\n"
+            "Team"
+        ),
+    },
+
+    "deletedorder": {
+        "subject": "Order deleted: {order_id}",
+        "body": (
+            "Hi {username},\n\n"
+            "Your order record has been deleted.\n\n"
+            "Order ID: {order_id}\n"
+            "If you believe this was a mistake, please contact support.\n\n"
+            "Thanks,\n"
+            "Team"
+        ),
+    },
+    "adordercreated": {
+        "subject": "🛒 New Order Placed by {customer_name}",
+        "body": (
+            "New order has been placed.\n\n"
+            "Customer:\n"
+            "- Name: {customer_name}\n"
+            "- Email: {customer_email}\n\n"
+            "Order IDs:\n"
+            "{order_ids}\n\n"
+            "Order Summary:\n"
+            "{order_summary}\n\n"
+            "Payment option: {payment_option}\n"
+            "Delivery address: {delivery_address}\n"
+            "Total amount: {total_amount}\n\n"
+            "Please check the admin panel for details."
+        ),
+    },
 }

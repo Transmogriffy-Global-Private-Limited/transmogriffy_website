@@ -18,6 +18,7 @@ class OrderDupSchema(BaseModel):
     cartid: Optional[str] = None
     deliveryaddress: Optional[str] = None
     paymentoption: Optional[str] = None
+    rzp_payment_id: Optional [str] = None
     orderstatus: Optional[str] = None
 
 class OrderStatusSchema(BaseModel):

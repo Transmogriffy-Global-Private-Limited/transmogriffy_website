@@ -167,7 +167,7 @@ async def verify_2fa_login_endpoint(
     response.headers["Authorization"] = f"Bearer {token}"
     return {
         "message": f"2FA verification successful. User {user.name} is now logged in.",
-        "User_Type": "User",
+        "User_Type": "User"
     }
 
 

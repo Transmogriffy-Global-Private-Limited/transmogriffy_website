@@ -17,6 +17,14 @@ from Payments.Router import payment_router
 from Contactus.Router import contact_router
 from Analytics.Router import analytics_router
 from BuyNow.Router import buynow_router
+from ctrcompute.Router import ctrcompute_router
+from razorpay_refunds.routers import (
+    initiate_refund_router,
+    fetch_updated_refund_by_id_router,
+    get_all_razorpay_refund_ids_under_refund_or_order_ids_router,
+    get_refund_details_by_razorpay_refund_id_or_refund_instance_id_router,
+    updated_refund_by_razorpay_refund_id_router,
+)
 
 
 @asynccontextmanager
@@ -32,7 +40,7 @@ middlewares = [
     Middleware(
         CORSMiddleware,
         allow_origins=["*"],  # Allows all origins; customize as needed
-        allow_credentials=True,
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=[
@@ -79,7 +87,14 @@ routers = [
     (payment_router, "/payments", ["Payments"]),
     (contact_router,'/contact',['ContactUs']),
     (analytics_router,'/analytics',['Analytics']),
-    (buynow_router,'/buynow',['BuyNow'])
+    (buynow_router,'/buynow',['BuyNow']),
+    (ctrcompute_router,'/ctrcompute',['CTRCompute']),
+     # Razorpay Refunds
+    (initiate_refund_router, "", ["Razorpay Refunds"]),
+    (fetch_updated_refund_by_id_router, "", ["Razorpay Refunds"]),
+    (get_all_razorpay_refund_ids_under_refund_or_order_ids_router, "", ["Razorpay Refunds"]),
+    (get_refund_details_by_razorpay_refund_id_or_refund_instance_id_router, "", ["Razorpay Refunds"]),
+    (updated_refund_by_razorpay_refund_id_router, "", ["Razorpay Refunds"]),
 ]
 
 for router, prefix, tags in routers:

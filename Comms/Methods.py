@@ -53,3 +53,44 @@ async def get_email_content(template_name: str, **kwargs) -> dict:
     body = template["body"].format(**kwargs)
 
     return {"subject": subject, "body": body}
+
+async def send_templated_email(to_email: str, template_name: str, **kwargs) -> bool:
+    try:
+        content = await get_email_content(template_name, **kwargs)
+        return await send_email(to_email=to_email, subject=content["subject"], body=content["body"])
+    except KeyError as e:
+        import traceback
+        missing_key = str(e).strip("'")
+
+        print("\n=== EMAIL TEMPLATE KEYERROR DEBUG ===")
+        print("template_name:", template_name)
+        print("to_email:", to_email)
+        print("missing_key:", missing_key)
+        print("kwargs_keys:", sorted(list(kwargs.keys())))
+
+        # Show what placeholders the template actually expects (from the running process)
+        try:
+            template = email_templates.get(template_name)
+            if template:
+                import string
+                formatter = string.Formatter()
+                expected = set()
+                for _, field_name, _, _ in formatter.parse(template.get("body", "")):
+                    if field_name:
+                        expected.add(field_name)
+                print("expected_placeholders_in_body:", sorted(expected))
+        except Exception:
+            pass
+
+        traceback.print_exc()
+        print("=== END DEBUG ===\n")
+        return False
+    except Exception:
+        import traceback
+        print("\n=== EMAIL SEND DEBUG (NON-KEYERROR) ===")
+        print("template_name:", template_name)
+        print("to_email:", to_email)
+        print("kwargs_keys:", sorted(list(kwargs.keys())))
+        traceback.print_exc()
+        print("=== END DEBUG ===\n")
+        return False
