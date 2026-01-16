@@ -113,6 +113,7 @@ async def order_create(payload: dict, order_data: OrderDupSchema):
                 totalamount=str(total_amount),
                 paymentoption=payment_option,
                 rzp_payment_id = order_data.rzp_payment_id,
+                rzp_order_id = order_data.rzp_order_id,
                 orderstatus=order_status,
                 deliveryaddress=delivery_address
             )
@@ -208,6 +209,7 @@ async def get_allorders():
                 "total_amount": order.totalamount,
                 "payment_option": order.paymentoption,
                 "rzp_payment_id": order.rzp_payment_id,
+                "rzp_order_id": order.rzp_order_id,
                 "order_status": order.orderstatus,
                 "deliveryaddress": order.deliveryaddress,
                 "user_name": userdata.name,
@@ -250,6 +252,7 @@ async def order_history(user_id: str):
                 "total_amount": order.totalamount,
                 "payment_option": order.paymentoption,
                 "rzp_payment_id": order.rzp_payment_id,
+                "rzp_order_id": order.rzp_order_id,
                 "order_status": order.orderstatus,
                 "deliveryaddress": order.deliveryaddress,
                 "purchase_time": order.created_at,
