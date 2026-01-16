@@ -218,6 +218,7 @@ class Order(Model):
     totalamount = fields.CharField(default=None, max_length=600)
     paymentoption = fields.CharField(default=None, max_length=600)
     rzp_payment_id = fields.CharField(default="default_id", max_length = 600)
+    rzp_order_id = fields.CharField(default = "default_id", max_length = 600)
     orderstatus = fields.CharField(default=None, max_length=600)
     ordered_quantity = fields.CharField(default=None, max_length=600)
     deliveryaddress = fields.CharField(default=None,max_length=600)
