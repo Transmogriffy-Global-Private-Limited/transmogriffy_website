@@ -10,6 +10,7 @@ from Database_and_ORM.Database_Models import Order, Cart, Product,User, Admin
 from Comms.Methods import send_templated_email
 from fastapi import HTTPException, status
 from tortoise.exceptions import DoesNotExist
+from razorpay_refunds.methods.initiate_refund import initiate_refund
 
 # async def order_create(payload: dict, order_data: OrderDupSchema):
 #     user_id = order_data.user_id
@@ -493,6 +494,12 @@ async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel
         product = await Product.get(id=order.productid)
         updated_quantity = product.quantity + int(order.ordered_quantity)
         await Product.filter(id=order.productid).update(quantity=updated_quantity)
+
+        try:
+            await initiate_refund (order_id)
+        except Exception as refund_error:
+            print ("Couldn't automatically process refund.")
+            pass
 
         # -------------------------
         # EMAIL: cancellation is also a status update (NEW)
