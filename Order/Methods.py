@@ -496,9 +496,10 @@ async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel
         await Product.filter(id=order.productid).update(quantity=updated_quantity)
 
         try:
-            await initiate_refund (order_id)
+            refund_details = await initiate_refund (order_id)
+            print(f"Refund successfully initiated. Details: \n {refund_details}")
         except Exception as refund_error:
-            print ("Couldn't automatically process refund.")
+            print (f"Couldn't automatically process refund. Error: \n{refund_error}")
             pass
 
         # -------------------------

@@ -15,8 +15,8 @@ RZP_REFUND_STATUSES = {"created", "pending", "processed", "failed"}
 
 
 def _rzp_client() -> Client:
-    key_id = config("RAZORPAY_KEY_ID", default=None)
-    key_secret = config("RAZORPAY_KEY_SECRET", default=None)
+    key_id = config("RAZOR_PAY_KEY", default=None)
+    key_secret = config("RAZOR_PAY_SECRET", default=None)
 
     if not key_id or not key_secret:
         raise HTTPException(

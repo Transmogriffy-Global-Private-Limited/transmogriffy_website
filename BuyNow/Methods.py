@@ -94,7 +94,7 @@ async def get_buy_now_transactions(user_id: str):
 
 
 # Initialize Razorpay client
-razorpay_client = Client(auth=("RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"))
+razorpay_client = Client(auth=("RAZOR_PAY_KEY", "RAZOR_PAY_SECRET"))
 
 
 async def razorpayfn(payment_schema:PaymentSchema):
