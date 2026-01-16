@@ -31,20 +31,17 @@ def _rzp_client() -> Client:
         raise HTTPException(status_code=500, detail="Razorpay keys not configured.")
     return Client(auth=(key_id, key_secret))
 
-
 async def _resolve_payment_id(order: Order, explicit: Optional[str]) -> str:
     if explicit:
         return explicit
 
-    pay = (
-        await Payments.filter(userid=order.userid, productid=order.productid)
-        .order_by("-created_at")
-        .first()
-    )
-    if not pay or not getattr(pay, "paymentid", None):
-        raise HTTPException(status_code=404, detail="No Razorpay payment record for this order.")
-    return pay.paymentid
+    if getattr(order, "rzp_payment_id", None):
+        return order.rzp_payment_id
 
+    raise HTTPException(
+        status_code=404,
+        detail="No rzp_payment_id attached to this order. Cannot initiate refund."
+    )
 
 async def initiate_refund(
     order_id: str,
