@@ -97,4 +97,28 @@ email_templates = {
             "Please check the admin panel for details."
         ),
     },
+
+    "refundinitiated" : {
+    "subject": "Refund initiated for your order {order_id}",
+    "body": (
+        "Hi {username},\n\n"
+        "We’ve initiated a refund for your order.\n\n"
+        "Order ID: {order_id}\n"
+        "Product: {product_name} {product_model}\n"
+        "Refund ID: {rzp_refund_id}\n"
+        "Refund Amount: ₹{refund_amount_rupees}\n"
+        "Order Amount: ₹{total_order_amount_rupees}\n"
+        "Current Refund Status: {refund_status}\n\n"
+        "Status meaning:\n"
+        "- created / pending: refund is in progress with the payment provider\n"
+        "- processed: refund has been completed successfully\n"
+        "- failed: refund could not be completed (we’ll assist you)\n\n"
+        "Refunds are typically credited back to the original payment method within 5–7 business days "
+        "(bank timelines may vary).\n\n"
+        "Need help? Contact us at {support_email}\n\n"
+        "Warm regards,\n"
+        "{brand_name} Support Team"
+    ),
+}
+
 }

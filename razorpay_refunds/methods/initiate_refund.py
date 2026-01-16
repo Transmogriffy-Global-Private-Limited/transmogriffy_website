@@ -12,6 +12,8 @@ from razorpay import Client
 from decouple import config
 
 from Database_and_ORM.Database_Models import Order, Payments, Refund_Instances
+from Comms.send_mail_on_refund_initiation import send_mail_on_refund_initiation
+
 
 RZP_REFUND_STATUSES = {"created", "pending", "processed", "failed"}
 
@@ -136,6 +138,12 @@ async def initiate_refund(
         refund_status=rzp_status,
         failure_reason=None,  # webhook can later set failure_reason if it becomes failed
     )
+
+    try:
+        await send_mail_on_refund_initiation(str(order.id))
+    except Exception as mail_err:
+        # Do NOT break refund flow because email failed
+        print(f"[refund-mail] Failed to send refund initiation mail: {mail_err}")
 
     return {
         "message": "Refund initiated (Razorpay accepted).",
