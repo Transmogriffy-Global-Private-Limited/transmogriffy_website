@@ -256,7 +256,9 @@ async def order_history(user_id: str):
                 "order_status": order.orderstatus,
                 "deliveryaddress": order.deliveryaddress,
                 "purchase_time": order.created_at,
-                "user_id": order.userid
+                "user_id": order.userid,
+                "rfc": order.reasonforcancel,
+                "orfc": order.otherreasonforcancel
             }
 
             order_history_with_products.append(order_details)
