@@ -16,6 +16,7 @@ from typing import Dict
 from Utility_Methods.Utility_Methods import (
     create_jwt,
     verify_otp,
+    verify_jwt,
     verify_user_password,
     get_hashed_password,
     encode_path_to_base64,
@@ -139,6 +140,45 @@ async def logout_user(authorization: str, payload: dict):
     else:
         return "You have already logged out!"
 
+async def is_token_valid(authorization: str) -> dict:
+    """
+    Returns whether the provided JWT token is valid or invalid.
+
+    Valid means:
+    1. Token can be extracted
+    2. Token verifies cryptographically (signature + expiry)
+    3. Token is NOT blacklisted
+    4. User referenced by token payload still exists
+    """
+    try:
+        # 1️⃣ Extract raw token
+        token = await get_token_from_authorization_header_value(authorization)
+
+        # 2️⃣ Check blacklist
+        blacklisted = await Blacklisted_Tokens.filter(
+            Blacklisted_Tokens=token
+        ).exists()
+        if blacklisted:
+            return {"valid": False}
+
+        payload = await verify_jwt(token)
+        if not payload:
+            return {"valid": False}
+
+        # 4️⃣ Check user existence
+        user_id = payload.get("user_id")
+        if not user_id:
+            return {"valid": False}
+
+        user_exists = await User.filter(id=user_id).exists()
+        if not user_exists:
+            return {"valid": False}
+
+        return {"valid": True}
+
+    except Exception:
+        # Any failure → invalid
+        return {"valid": False}
 
 async def update_user(update_data: Dict, payload: dict):
     """

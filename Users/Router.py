@@ -27,6 +27,7 @@ from Users.Methods import (
     create_user,
     authenticate_user,
     logout_user,
+    is_token_valid,
     update_user,
     delete_user,
     verify_2fa_and_login,
@@ -98,6 +99,22 @@ async def logout_user_endpoint(
         raise HTTPException(status_code=400, detail="Cannot verify user")
     return await logout_user(authorization, payload)
 
+@User_Router.post("/token/validate", status_code=status.HTTP_200_OK)
+async def validate_token_endpoint(
+    authorization: str = Header(None),
+):
+    """
+    Checks whether the provided JWT token is valid.
+
+    Returns:
+    {
+        "valid": true | false
+    }
+    """
+    if not authorization:
+        return {"valid": False}
+
+    return await is_token_valid(authorization)
 
 @User_Router.patch("/update")
 async def update_user_endpoint(
