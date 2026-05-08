@@ -11,7 +11,7 @@ from tortoise.exceptions import DoesNotExist
 from razorpay import Client
 from decouple import config
 
-from Database_and_ORM.Database_Models import Order, Payments, Refund_Instances
+from Database_and_ORM.Database_Models import Order, Payments, Refund_Instances, Transactions
 from Comms.send_mail_on_refund_initiation import send_mail_on_refund_initiation
 
 
@@ -33,16 +33,84 @@ def _rzp_client() -> Client:
         raise HTTPException(status_code=500, detail="Razorpay keys not configured.")
     return Client(auth=(key_id, key_secret))
 
+def _clean_optional_str(value) -> Optional[str]:
+    if value is None:
+        return None
+    value = str(value).strip()
+    return value or None
+
+
+def _is_valid_rzp_payment_id(value) -> bool:
+    value = _clean_optional_str(value)
+    return bool(value and value.startswith("pay_"))
+
+
+def _same_money(left, right) -> bool:
+    try:
+        l = Decimal(str(left)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        r = Decimal(str(right)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return l == r
+    except Exception:
+        return False
+
+
 async def _resolve_payment_id(order: Order, explicit: Optional[str]) -> str:
+    # 1. If caller explicitly passed a real Razorpay payment id, use it.
+    explicit = _clean_optional_str(explicit)
     if explicit:
+        if not _is_valid_rzp_payment_id(explicit):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid rzp_payment_id: {explicit!r}. Expected Razorpay payment id starting with 'pay_'.",
+            )
         return explicit
 
-    if getattr(order, "rzp_payment_id", None):
-        return order.rzp_payment_id
+    # 2. If Order already has a real pay_ id, use it.
+    stored_payment_id = _clean_optional_str(getattr(order, "rzp_payment_id", None))
+    if _is_valid_rzp_payment_id(stored_payment_id):
+        return stored_payment_id
 
+    # 3. Live-flow repair:
+    # Current flow stores actual Razorpay payment id in Transactions.razorpaypaymentid.
+    matching_transaction = None
+
+    transactions = (
+        await Transactions.filter(
+            userid=order.userid,
+            productid=order.productid,
+        )
+        .order_by("-created_at")
+        .limit(20)
+    )
+
+    for tx in transactions:
+        tx_payment_id = _clean_optional_str(getattr(tx, "razorpaypaymentid", None))
+
+        if not _is_valid_rzp_payment_id(tx_payment_id):
+            continue
+
+        if _same_money(getattr(tx, "price", None), order.totalamount):
+            matching_transaction = tx
+            break
+
+    if matching_transaction:
+        repaired_payment_id = matching_transaction.razorpaypaymentid
+
+        # Repair the order row so the next refund/status call does not need fallback.
+        order.rzp_payment_id = repaired_payment_id
+        await order.save()
+
+        return repaired_payment_id
+
+    # 4. Stop before Razorpay.
+    # This prevents Razorpay "Invalid Request" and gives a clear local error.
     raise HTTPException(
-        status_code=404,
-        detail="No rzp_payment_id attached to this order. Cannot initiate refund."
+        status_code=400,
+        detail=(
+            "No valid Razorpay payment id found for this order. "
+            f"Order.rzp_payment_id={stored_payment_id!r}. Expected 'pay_...'. "
+            "Could not recover matching payment id from Transactions."
+        ),
     )
 
 async def initiate_refund(
