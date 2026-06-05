@@ -603,7 +603,7 @@ async def get_profile_picture(payload: dict) -> dict:
 
     # Check if user has a profile picture
     if not user.profile_picture:
-        return {"message": "No profile picture available."}
+        return {"profile_picture": None}
 
     try:
         # Detect MIME type (basic inference, optionally improve later)
