@@ -1,14 +1,25 @@
 from Database_and_ORM.Methods import init_db, close_db
 from Database_and_ORM.Database_Models import APIActivityLog
 from datetime import datetime, timezone
-from fastapi import Request, HTTPException, status, Header
-from fastapi.responses import StreamingResponse, Response
+from fastapi import Request
+from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from decouple import config
-import traceback
 from typing import Optional, Callable
+from time import perf_counter
 import asyncio
+import traceback
+
+
+API_KEY = config("API_KEY")
+EXCLUDED_PATHS = {
+    path.strip()
+    for path in config("EXCLUDED_PATHS", default="").split(",")
+    if path.strip()
+}
+
+_API_LOG_WRITE_LIMIT = asyncio.Semaphore(8)
 
 
 async def startup_event():
@@ -22,121 +33,131 @@ async def shutdown_event():
 class VerifyAPIKeyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         """
-        Middleware to check for a valid API key in the request headers, excluding certain paths.
+        Checks API key without repeatedly reading env config per request.
+        FE-facing behaviour stays the same.
         """
-        # List of paths to exclude from API key verification
-        excluded_paths = config("EXCLUDED_PATHS")
-
-        # Skip validation if the path is in the excluded paths
-        if request.url.path in excluded_paths:
+        if request.url.path in EXCLUDED_PATHS:
             return await call_next(request)
 
-        # Fetch API key from request headers and compare with the valid key
         api_key = request.headers.get("API-KEY")
-        valid_api_key = config("API_KEY")
 
         if not api_key:
             return JSONResponse(
-                status_code=401, content={"detail": "No API key present"}
+                status_code=401,
+                content={"detail": "No API key present"},
             )
 
-        if api_key != valid_api_key:
+        if api_key != API_KEY:
             return JSONResponse(
-                status_code=403, content={"detail": "Invalid API Key"}
+                status_code=403,
+                content={"detail": "Invalid API Key"},
             )
 
-        response = await call_next(request)
-        return response
+        return await call_next(request)
 
 
-async def log_api_activity(
-    request: Request,
-    response_status: Optional[int] = None,
-    response_time: Optional[int] = None,  # Integer value in milliseconds
-    error: Optional[str] = None,  # Capture error as a string
+def _safe_text(value) -> str:
+    try:
+        return str(value)
+    except Exception:
+        return "Unserializable error"
+
+
+async def _write_api_activity_log(
+    *,
+    endpoint_hit: str,
+    requesting_ip: str,
+    request_data: dict,
+    response_status: Optional[int],
+    response_time: Optional[int],
+    time_requested: datetime,
+    error: Optional[str] = None,
     error_location: Optional[str] = None,
 ):
     """
-    Logs API activity to the database.
+    Writes API activity without being on the response hot path.
+    Any logging failure is swallowed because logging must not break user/API behaviour.
     """
-    endpoint_hit = request.url.path
-    requesting_ip = request.client.host
-
-    # Capture selected request details
-    request_data = {
-        "headers": dict(request.headers),
-        "user_agent": request.headers.get("User-Agent"),
-    }
-
-    # Capture request body if possible
     try:
-        request_body = await request.body()
+        async with _API_LOG_WRITE_LIMIT:
+            await APIActivityLog.create(
+                requesting_ip=requesting_ip or "Unavailable",
+                request=request_data,
+                response={"status_code": response_status or 0},
+                endpoint_hit=endpoint_hit,
+                time_taken=response_time or 0,
+                time_requested=time_requested,
+                time_responded=datetime.now(timezone.utc),
+                error=error,
+                error_location=error_location,
+            )
     except Exception:
-        request_body = "<unavailable>"
-
-    request_data["body"] = (
-        request_body.decode("utf-8")
-        if isinstance(request_body, bytes)
-        else request_body
-    )
-
-    # Prepare response data, ensuring defaults of 0 for non-nullable fields
-    response_data = {
-        "status_code": response_status or 0,
-    }
-
-    # Ensure error and error_location have default values for non-nullable fields
-    error_message = error
-    error_location = error_location
-
-    # Log entry creation (replace with actual database logging logic)
-    await APIActivityLog.create(
-        requesting_ip=requesting_ip or "Unavailable",
-        request=request_data,
-        response=response_data,
-        endpoint_hit=endpoint_hit,
-        time_taken=response_time or 0,  # Default to 0 if None
-        time_requested=request.state.time_requested,
-        time_responded=datetime.now(timezone.utc),
-        error=error_message,
-        error_location=error_location,
-    )
+        # Logging is internal. Never let it change API behaviour.
+        pass
 
 
-# Middleware class to log API activity and capture response status and time
+def _schedule_api_activity_log(**kwargs):
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+
+    task = loop.create_task(_write_api_activity_log(**kwargs))
+
+    def _consume_task_exception(done_task: asyncio.Task):
+        try:
+            done_task.result()
+        except Exception:
+            pass
+
+    task.add_done_callback(_consume_task_exception)
+
+
 class APIActivityLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(
-        self, request: Request, call_next: Callable
+        self,
+        request: Request,
+        call_next: Callable,
     ) -> Response:
-        # Record the time when the request was received
-        request.state.time_requested = datetime.now(timezone.utc)
+        time_requested = datetime.now(timezone.utc)
+        start_time = perf_counter()
 
-        # Start the timer for response time measurement
-        start_time = asyncio.get_event_loop().time()
+        endpoint_hit = request.url.path
+        requesting_ip = request.client.host if request.client else "Unavailable"
+        request_data = {
+            "headers": dict(request.headers),
+            "user_agent": request.headers.get("User-Agent"),
+            "body": "<not captured on response hot path>",
+        }
 
         try:
-            # Call the next middleware or endpoint handler
             response = await call_next(request)
 
-            # Capture response status code and calculate response time in milliseconds
-            status_code = response.status_code
-            response_time = int(
-                (asyncio.get_event_loop().time() - start_time) * 1000
-            )  # Convert to milliseconds
+            response_time = int((perf_counter() - start_time) * 1000)
 
-            # Log API activity
-            await log_api_activity(
-                request,
-                response_status=status_code,
+            _schedule_api_activity_log(
+                endpoint_hit=endpoint_hit,
+                requesting_ip=requesting_ip,
+                request_data=request_data,
+                response_status=response.status_code,
                 response_time=response_time,
+                time_requested=time_requested,
             )
+
+            return response
 
         except Exception as e:
-            # Log other exceptions with traceback
-            error_location = traceback.format_exc()
-            await log_api_activity(
-                request, error=str(e), error_location=error_location
-            )
-            raise e
+            response_time = int((perf_counter() - start_time) * 1000)
 
-        return response
+            _schedule_api_activity_log(
+                endpoint_hit=endpoint_hit,
+                requesting_ip=requesting_ip,
+                request_data=request_data,
+                response_status=500,
+                response_time=response_time,
+                time_requested=time_requested,
+                error=_safe_text(e),
+                error_location=traceback.format_exc(limit=2),
+            )
+
+            raise
