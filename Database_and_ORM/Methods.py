@@ -60,7 +60,7 @@ TORTOISE_ORM = {
                 "user": url.username,
                 "password": url.password,
                 "database": url.path.lstrip("/"),
-                "maxsize": 5,
+                "maxsize": 20,
             },
         }
     },
