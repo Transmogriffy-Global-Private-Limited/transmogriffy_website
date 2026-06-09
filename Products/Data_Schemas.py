@@ -133,3 +133,20 @@ class ProductResponse(BaseModel):
     image_paths: List[str]
     quantity: int
     price: float
+
+class ProductReviewCreateSchema(BaseModel):
+    product_id: UUID4
+    rating: int = Field(..., ge=1, le=5)
+    review: Optional[str] = Field(default=None, max_length=5000)
+
+    @field_validator("review")
+    def clean_review(cls, v):
+        if v is None:
+            return v
+        cleaned = v.strip()
+        return cleaned or None
+
+
+class ProductReviewVisibilitySchema(BaseModel):
+    review_id: UUID4
+    is_visible: bool

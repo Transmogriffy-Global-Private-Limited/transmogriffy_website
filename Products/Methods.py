@@ -1,10 +1,13 @@
 import uuid
 from fastapi import HTTPException, status, File, UploadFile
-from tortoise.exceptions import DoesNotExist
+from tortoise.exceptions import DoesNotExist, IntegrityError
 import base64
 from Database_and_ORM.Database_Models import (
     Product,
     Admin,
+    User,
+    Order,
+    ProductReview,
 )
 from Products.Data_Schemas import (
     AddProductSchema,
@@ -620,3 +623,234 @@ class DelistedProductSearchEngine:
         ]
 
         return final_results
+    
+def _parse_review_limit(limit: str) -> tuple[int, int]:
+    match = re.match(r"^(\d+)-(\d+)$", limit)
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid limit format. Use 'start-end'.",
+        )
+
+    start, end = map(int, match.groups())
+
+    if start > end or start < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid limit range.",
+        )
+
+    return start, end
+
+
+async def _verify_review_user(payload: dict) -> User:
+    user_id = payload.get("user_id")
+    user = await User.get_or_none(id=user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Please login",
+        )
+
+    return user
+
+
+async def _has_user_ordered_product(user_id: str, product_id: str) -> bool:
+    return await Order.filter(
+        userid=str(user_id),
+        productid=str(product_id),
+    ).exclude(
+        orderstatus__in=["canceled", "cancelled"]
+    ).exists()
+
+
+async def _serialize_product_review(review: ProductReview) -> dict:
+    user = await review.user
+
+    verified_purchase = await _has_user_ordered_product(
+        str(user.id),
+        str(review.product_id),
+    )
+
+    return {
+        "id": str(review.id),
+        "product_id": str(review.product_id),
+        "user_id": str(user.id),
+        "user_name": user.name,
+        "rating": review.rating,
+        "review": review.review,
+        "verified_purchase": verified_purchase,
+        "is_visible": review.is_visible,
+        "created_at": review.created_at,
+        "updated_at": review.updated_at,
+    }
+
+
+async def add_or_update_product_review(payload: dict, review_data) -> dict:
+    user = await _verify_review_user(payload)
+
+    product = await Product.get_or_none(id=review_data.product_id, is_listed=True)
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found or is delisted",
+        )
+
+    existing_review = await ProductReview.get_or_none(
+        product_id=str(product.id),
+        user_id=str(user.id),
+    )
+
+    if existing_review:
+        existing_review.rating = review_data.rating
+        existing_review.review = review_data.review
+        existing_review.is_visible = True
+        await existing_review.save()
+        return {
+            "message": "Review updated successfully",
+            "review": await _serialize_product_review(existing_review),
+        }
+
+    try:
+        new_review = await ProductReview.create(
+            product_id=str(product.id),
+            user_id=str(user.id),
+            rating=review_data.rating,
+            review=review_data.review,
+            is_visible=True,
+        )
+    except IntegrityError:
+        existing_review = await ProductReview.get(
+            product_id=str(product.id),
+            user_id=str(user.id),
+        )
+        existing_review.rating = review_data.rating
+        existing_review.review = review_data.review
+        existing_review.is_visible = True
+        await existing_review.save()
+        return {
+            "message": "Review updated successfully",
+            "review": await _serialize_product_review(existing_review),
+        }
+
+    return {
+        "message": "Review added successfully",
+        "review": await _serialize_product_review(new_review),
+    }
+
+
+async def get_product_review_summary(product_id: str) -> dict:
+    product = await Product.get_or_none(id=product_id, is_listed=True)
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found or is delisted",
+        )
+
+    reviews = await ProductReview.filter(
+        product_id=str(product.id),
+        is_visible=True,
+    ).values_list("rating", flat=True)
+
+    review_count = len(reviews)
+    average_rating = (
+        round(sum(reviews) / review_count, 2)
+        if review_count > 0
+        else 0
+    )
+
+    rating_breakdown = {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+    }
+
+    for rating in reviews:
+        rating_breakdown[str(rating)] += 1
+
+    return {
+        "product_id": str(product.id),
+        "average_rating": average_rating,
+        "review_count": review_count,
+        "rating_breakdown": rating_breakdown,
+    }
+
+
+async def get_product_reviews(product_id: str, limit: str = "1-10") -> dict:
+    product = await Product.get_or_none(id=product_id, is_listed=True)
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found or is delisted",
+        )
+
+    start, end = _parse_review_limit(limit)
+
+    reviews = (
+        await ProductReview.filter(
+            product_id=str(product.id),
+            is_visible=True,
+        )
+        .order_by("-created_at")
+        .offset(start - 1)
+        .limit(end - start + 1)
+    )
+
+    return {
+        "product_id": str(product.id),
+        "range": f"{start}-{end}",
+        "reviews": [
+            await _serialize_product_review(review)
+            for review in reviews
+        ],
+    }
+
+
+async def delete_product_review(payload: dict, review_id: str) -> dict:
+    user_id = payload.get("user_id")
+
+    review = await ProductReview.get_or_none(id=review_id)
+    if not review:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Review not found",
+        )
+
+    admin = await Admin.get_or_none(id=user_id)
+    is_owner = str(review.user_id) == str(user_id)
+
+    if not admin and not is_owner:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own review",
+        )
+
+    await review.delete()
+
+    return {
+        "message": "Review deleted successfully",
+        "review_id": str(review_id),
+    }
+
+
+async def set_product_review_visibility(payload: dict, visibility_data) -> dict:
+    await verify_admin(payload)
+
+    review = await ProductReview.get_or_none(id=visibility_data.review_id)
+    if not review:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Review not found",
+        )
+
+    review.is_visible = visibility_data.is_visible
+    await review.save()
+
+    return {
+        "message": "Review visibility updated successfully",
+        "review_id": str(review.id),
+        "is_visible": review.is_visible,
+    }

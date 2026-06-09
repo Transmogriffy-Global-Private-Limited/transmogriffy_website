@@ -181,6 +181,36 @@ class Product(Model):
         table = "product"
 
 
+class ProductReview(Model):
+    id = fields.UUIDField(pk=True)
+
+    product = fields.ForeignKeyField(
+        "models.Product",
+        related_name="reviews",
+        on_delete=fields.CASCADE,
+    )
+    user = fields.ForeignKeyField(
+        "models.User",
+        related_name="product_reviews",
+        on_delete=fields.CASCADE,
+    )
+
+    rating = fields.IntField(description="Rating from 1 to 5")
+    review = fields.TextField(null=True)
+    is_visible = fields.BooleanField(default=True)
+
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "product_review"
+        unique_together = (("product", "user"),)
+        indexes = (
+            ("product", "is_visible"),
+            ("user",),
+        )
+
+
 class ProductInstance(Model):
     id = fields.UUIDField(pk=True)
     product = fields.ForeignKeyField(

@@ -14,13 +14,21 @@ from Products.Methods import (
     toggle_product_listing,
     get_product,
     get_all_products,
-    get_delisted_products,)
+    get_delisted_products,
+    add_or_update_product_review,
+    get_product_review_summary,
+    get_product_reviews,
+    delete_product_review,
+    set_product_review_visibility,
+)
 from Products.Methods import ProductSearchEngine, DelistedProductSearchEngine
 from Products.Data_Schemas import (
     AddProductSchema,
     UpdateProductSchema,
     ToggleProductListingSchema,
     SearchProductsSchema,
+    ProductReviewCreateSchema,
+    ProductReviewVisibilitySchema,
 )
 from typing import List
 
@@ -110,3 +118,45 @@ async def get_delisted_products_endpoint(
     return await get_delisted_products(
         payload, limit=limit
     )
+
+@Products_Router.post("/reviews/add", status_code=status.HTTP_200_OK)
+async def add_or_update_product_review_endpoint(
+    review_data: ProductReviewCreateSchema,
+    payload: dict = Depends(verify_jwt),
+):
+    return await add_or_update_product_review(payload, review_data)
+
+
+@Products_Router.get(
+    "/reviews/summary/{product_id}",
+    status_code=status.HTTP_200_OK,
+)
+async def get_product_review_summary_endpoint(product_id: str):
+    return await get_product_review_summary(product_id)
+
+
+@Products_Router.get("/reviews/{product_id}", status_code=status.HTTP_200_OK)
+async def get_product_reviews_endpoint(
+    product_id: str,
+    limit: str = Query("1-10"),
+):
+    return await get_product_reviews(product_id, limit)
+
+
+@Products_Router.delete("/reviews/{review_id}", status_code=status.HTTP_200_OK)
+async def delete_product_review_endpoint(
+    review_id: str,
+    payload: dict = Depends(verify_jwt),
+):
+    return await delete_product_review(payload, review_id)
+
+
+@Products_Router.put(
+    "/admin/reviews/visibility",
+    status_code=status.HTTP_200_OK,
+)
+async def set_product_review_visibility_endpoint(
+    visibility_data: ProductReviewVisibilitySchema,
+    payload: dict = Depends(verify_jwt),
+):
+    return await set_product_review_visibility(payload, visibility_data)
