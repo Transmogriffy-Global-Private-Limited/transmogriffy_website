@@ -6,7 +6,7 @@ import os
 import shutil
 from decouple import config
 from .Data_Schemas import OrderSchema,OrderDupSchema,OrderStatusSchema
-from Database_and_ORM.Database_Models import Order, Cart, Product,User, Admin
+from Database_and_ORM.Database_Models import Order, Cart, Product, User, Admin, Refund_Instances
 from Comms.Methods import send_templated_email
 from fastapi import HTTPException, status
 from tortoise.exceptions import DoesNotExist
@@ -194,14 +194,45 @@ async def order_create(payload: dict, order_data: OrderDupSchema):
 async def get_allorders():
     try:
         orders = await Order.all()
+
+        # Fetch all refund rows once, then group by order_id.
+        # This avoids one refund query per order.
+        refund_rows = await Refund_Instances.all()
+        refunds_by_order_id = {}
+
+        for refund in refund_rows:
+            order_id_key = str(refund.order_id)
+
+            refund_status = refund.refund_status
+            if hasattr(refund_status, "value"):
+                refund_status = refund_status.value
+
+            refund_details = {
+                "refund_instance_id": str(refund.id),
+                "order_id": str(refund.order_id),
+                "rzp_payment_id": refund.rzp_payment_id,
+                "rzp_refund_id": refund.rzp_refund_id,
+                "refund_status": refund_status,
+                "total_order_amount_paise": refund.total_order_amount_paise,
+                "refund_amount_paise": refund.refund_amount_paise,
+                "failure_reason": refund.failure_reason,
+                "created_at": refund.created_at,
+                "updated_at": refund.updated_at,
+            }
+
+            refunds_by_order_id.setdefault(order_id_key, []).append(refund_details)
+
         order_with_up = []
 
         for order in orders:
-            product =  await Product.get(id=order.productid)
+            product = await Product.get(id=order.productid)
             userdata = await User.get(id=order.userid)
+
+            order_refunds = refunds_by_order_id.get(str(order.id), [])
+
             order_details = {
-                "order_id":order.id,
-                 "product_name": product.name,
+                "order_id": order.id,
+                "product_name": product.name,
                 "product_model": product.model,
                 "product_details": product.details,
                 "product_color": product.product_color,
@@ -213,17 +244,34 @@ async def get_allorders():
                 "order_status": order.orderstatus,
                 "deliveryaddress": order.deliveryaddress,
                 "user_name": userdata.name,
-                "user_email":userdata.email,
+                "user_email": userdata.email,
                 "purchase_time": order.created_at,
-                "address":order.deliveryaddress,
-                "user_phonenumber":userdata.phone_number,
-                "reasonforcancel":order.reasonforcancel,
-                "otherreasonforcancel":order.otherreasonforcancel,
-                "created_at":order.created_at,
-                "updated_at":order.updated_at
+                "address": order.deliveryaddress,
+                "user_phonenumber": userdata.phone_number,
+                "reasonforcancel": order.reasonforcancel,
+                "otherreasonforcancel": order.otherreasonforcancel,
+                "created_at": order.created_at,
+                "updated_at": order.updated_at,
+
+                # Refund details for this order.
+                "refunds": order_refunds,
+                "refund_count": len(order_refunds),
+                "total_refunded_amount_paise": sum(
+                    refund["refund_amount_paise"]
+                    for refund in order_refunds
+                    if refund.get("refund_status") == "processed"
+                ),
+                "latest_refund_status": (
+                    order_refunds[0]["refund_status"]
+                    if order_refunds
+                    else None
+                ),
             }
+
             order_with_up.append(order_details)
+
         return order_with_up
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
