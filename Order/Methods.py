@@ -292,6 +292,7 @@ async def order_history(user_id: str):
 
             order_details = {
                 "order_id": order.id,
+                "product_id": product.id,
                 "product_name": product.name,
                 "product_model": product.model,
                 "product_details": product.details,
