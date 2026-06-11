@@ -1,59 +1,30 @@
 from enum import Enum
-from typing import Optional, List
-from pydantic import BaseModel
+from typing import List, Optional
+from pydantic import BaseModel, Field
 
-# -----------------------------------------------------------------------------
-# ORDER STATUS ENUM
-# -----------------------------------------------------------------------------
-class OrderStatusEnum(str, Enum):
-    payment_pending = "payment_pending"
-    paid = "paid"
-    processing = "processing"
-    shipped = "shipped"
-    delivered = "delivered"
-    cancelled = "cancelled"
-    refund_pending = "refund_pending"
-    refunded = "refunded"
 
-# -----------------------------------------------------------------------------
-# CHECKOUT INTERFACES
-# -----------------------------------------------------------------------------
-class ProductItemSchema(BaseModel):
-    productid: str
-    quantity: int
+class OrderSchema(BaseModel):
+    productid: Optional[str] = None
+    order_quantity: Optional[str] = None
+    userid: Optional[str] = None
+    totalamount: Optional[str] = None
+    deliveryaddress: Optional[str] = None
+    paymentoption: Optional[str] = None
+    orderstatus: Optional[str] = None
 
-class CheckoutSchema(BaseModel):
-    user_id: str
-    deliveryaddress: str
-    paymentoption: str
-    # If your front-end passes the items in the body payload explicitly, leave this line active.
-    # If the front-end ONLY sends user_id and expects the backend to pull the cart, comment this line out!
-    products: Optional[List[ProductItemSchema]] = None 
-
-# -----------------------------------------------------------------------------
-# BACKWARD COMPATIBILITY LAYERS
-# -----------------------------------------------------------------------------
-class OrderSchema(CheckoutSchema):
-    orderstatus: Optional[OrderStatusEnum] = OrderStatusEnum.payment_pending
 
 class OrderDupSchema(BaseModel):
-    user_id: str
-    deliveryaddress: str
-    paymentoption: str
-    rzp_order_id: str
-    rzp_payment_id: str
+    user_id: Optional[str] = None
+    cartid: Optional[str] = None
+    deliveryaddress: Optional[str] = None
+    paymentoption: Optional[str] = None
+    rzp_payment_id: Optional [str] = None
+    rzp_order_id: Optional [str] = None
+    orderstatus: Optional[str] = None
 
-# -----------------------------------------------------------------------------
-# LIFECYCLE MANAGEMENT UTILITIES
-# -----------------------------------------------------------------------------
 class OrderStatusSchema(BaseModel):
-    orderid: str
-    orderstatus: OrderStatusEnum
+    orderid: Optional[str] = None
+    orderstatus: Optional[str] = None
 
 class StandAloneUserId(BaseModel):
-    user_id: str
-
-class CancelOrderRequest(BaseModel):
-    order_id: str
-    reasonforcancel: str
-    otherreasonforcancel: Optional[str] = None
+    user_id: Optional[str] = None
