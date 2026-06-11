@@ -228,6 +228,14 @@ class Product(Model):
     currency = fields.CharField(max_length=10, default="INR")
 
     images = fields.JSONField(default=list)
+    created_at = fields.DatetimeField(
+        auto_now_add=True,
+        description="Timestamp when the product listing was created",
+    )
+    updated_at = fields.DatetimeField(
+        auto_now=True,
+        description="Timestamp when the product listing was last updated",
+    )
 
     class Meta:
         table = "product"

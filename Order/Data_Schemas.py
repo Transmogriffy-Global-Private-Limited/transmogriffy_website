@@ -1,11 +1,10 @@
-from pydantic import BaseModel
-from typing import Optional
 from enum import Enum
+from typing import Optional, List
+from pydantic import BaseModel
 
-
-# -------------------------
+# -----------------------------------------------------------------------------
 # ORDER STATUS ENUM
-# -------------------------
+# -----------------------------------------------------------------------------
 class OrderStatusEnum(str, Enum):
     payment_pending = "payment_pending"
     paid = "paid"
@@ -16,59 +15,44 @@ class OrderStatusEnum(str, Enum):
     refund_pending = "refund_pending"
     refunded = "refunded"
 
+# -----------------------------------------------------------------------------
+# CHECKOUT INTERFACES
+# -----------------------------------------------------------------------------
+class ProductItemSchema(BaseModel):
+    productid: str
+    quantity: int
 
-# -------------------------
-# GENERAL ORDER SCHEMA
-# (kept because Methods.py imports it)
-# -------------------------
-class OrderSchema(BaseModel):
+class CheckoutSchema(BaseModel):
     user_id: str
     deliveryaddress: str
     paymentoption: str
-    orderstatus: Optional[OrderStatusEnum] = (
-        OrderStatusEnum.payment_pending
-    )
+    # If your front-end passes the items in the body payload explicitly, leave this line active.
+    # If the front-end ONLY sends user_id and expects the backend to pull the cart, comment this line out!
+    products: Optional[List[ProductItemSchema]] = None 
 
+# -----------------------------------------------------------------------------
+# BACKWARD COMPATIBILITY LAYERS
+# -----------------------------------------------------------------------------
+class OrderSchema(CheckoutSchema):
+    orderstatus: Optional[OrderStatusEnum] = OrderStatusEnum.payment_pending
 
-# -------------------------
-# CHECKOUT / CREATE ORDER
-# (used in order_create())
-# -------------------------
 class OrderDupSchema(BaseModel):
     user_id: str
     deliveryaddress: str
     paymentoption: str
-
     rzp_order_id: str
     rzp_payment_id: str
 
-
-# -------------------------
-# OPTIONAL
-# backward compatibility
-# -------------------------
-class CheckoutSchema(OrderDupSchema):
-    pass
-
-
-# -------------------------
-# UPDATE ORDER STATUS
-# -------------------------
+# -----------------------------------------------------------------------------
+# LIFECYCLE MANAGEMENT UTILITIES
+# -----------------------------------------------------------------------------
 class OrderStatusSchema(BaseModel):
     orderid: str
     orderstatus: OrderStatusEnum
 
-
-# -------------------------
-# USER ID REQUEST
-# -------------------------
 class StandAloneUserId(BaseModel):
     user_id: str
 
-
-# -------------------------
-# CANCEL ORDER
-# -------------------------
 class CancelOrderRequest(BaseModel):
     order_id: str
     reasonforcancel: str
