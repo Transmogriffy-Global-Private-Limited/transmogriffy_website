@@ -83,112 +83,232 @@ from razorpay_refunds.methods.initiate_refund import initiate_refund
 #         )
 
 
-async def order_create(payload: dict, order_data: OrderDupSchema):
-    user_id = order_data.user_id
-    delivery_address = order_data.deliveryaddress
-    payment_option = order_data.paymentoption
-    order_status = order_data.orderstatus
+async def order_create(
+    payload: dict,
+    order_data
+):
 
-    cart_items = await Cart.filter(userid=user_id).all()
-    print("Cart items:", cart_items)
-    print(len(cart_items))
+    try:
 
-    if len(cart_items) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cart not found for the given user."
+        # -------------------------
+        # VALIDATE INPUT
+        # -------------------------
+        if not order_data.user_id:
+            raise HTTPException(
+                status_code=400,
+                detail="user_id is required"
+            )
+
+        if not order_data.rzp_order_id:
+            raise HTTPException(
+                status_code=400,
+                detail="rzp_order_id is required"
+            )
+
+        if not order_data.rzp_payment_id:
+            raise HTTPException(
+                status_code=400,
+                detail="rzp_payment_id is required"
+            )
+
+        # -------------------------
+        # VERIFY USER
+        # -------------------------
+        user = await User.get(
+            id=order_data.user_id
         )
 
-    created_orders = []
-    try:
-        for item in cart_items:
-            total_amount = item.price
-
-            # Create a new order for each cart item.
-            new_order = await Order.create(
-                id=uuid.uuid4(),
-                userid=user_id,
-                productid=item.productid,
-                ordered_quantity=item.quantity,
-                totalamount=str(total_amount),
-                paymentoption=payment_option,
-                rzp_payment_id = order_data.rzp_payment_id,
-                rzp_order_id = order_data.rzp_order_id,
-                orderstatus=order_status,
-                deliveryaddress=delivery_address
-            )
-            created_orders.append(new_order)
-
-        # clear cart
-        await Cart.filter(userid=user_id).delete()
-
         # -------------------------
-        # EMAIL: order created (USER + ALL ADMINS) ✅
-        # one email per checkout, summarizing all created orders
+        # LOAD CART
         # -------------------------
-        try:
-            userdata = await User.get(id=user_id)
+        cart_items = await Cart.filter(
+            userid=order_data.user_id
+        ).all()
 
-            order_ids_text = "\n".join([str(o.id) for o in created_orders])
+        if not cart_items:
 
-            # Build a readable summary
-            summary_lines = []
-            total_sum = 0.0
-            for o in created_orders:
-                product = await Product.get(id=o.productid)
-                qty = int(o.ordered_quantity) if str(o.ordered_quantity).isdigit() else o.ordered_quantity
-                line = f"- {product.name} ({product.model}) | Qty: {qty} | Amount: {o.totalamount}"
-                summary_lines.append(line)
-
-                try:
-                    total_sum += float(o.totalamount)
-                except Exception:
-                    pass
-
-            order_summary = "\n".join(summary_lines)
-            total_amount_text = str(total_sum) if total_sum > 0 else "N/A"
-
-            # ✅ Mail the customer
-            await send_templated_email(
-                to_email=userdata.email,
-                template_name="ordercreated",
-                username=userdata.name,
-                order_summary=order_summary,
-                payment_option=payment_option,
-                delivery_address=delivery_address,
+            raise HTTPException(
+                status_code=404,
+                detail="Cart is empty"
             )
 
-            # ✅ Mail each admin from DB
-            admins = await Admin.all()
-            for admin in admins:
-                # (optional guard) skip empty emails if ever present
-                if not getattr(admin, "email", None):
-                    continue
+        created_orders = []
 
-                await send_templated_email(
-                    to_email=admin.email,
-                    template_name="adordercreated",
-                    customer_name=userdata.name,
-                    customer_email=userdata.email,
-                    order_ids=order_ids_text,
-                    order_summary=order_summary,
-                    payment_option=payment_option,
-                    delivery_address=delivery_address,
-                    total_amount=total_amount_text
+        # -------------------------
+        # TRANSACTION
+        # -------------------------
+        async with in_transaction():
+
+            for item in cart_items:
+
+                product = await Product.get(
+                    id=item.productid
                 )
 
-        except Exception as mail_err:
-            import traceback
-            print("Order created email failed (mail block) ✅ FULL TRACE:")
-            traceback.print_exc()
+                quantity = int(
+                    item.quantity
+                )
 
-        return {"message": "Order created successfully.", "orders": created_orders}
+                # -------------------------
+                # STOCK VALIDATION
+                # -------------------------
+                if (
+                    product.quantity
+                    <
+                    quantity
+                ):
+
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Insufficient stock "
+                            f"for product "
+                            f"{product.name}"
+                        )
+                    )
+
+                total_amount = (
+                    float(
+                        product.price
+                    )
+                    *
+                    quantity
+                )
+
+                # -------------------------
+                # CREATE ORDER
+                # -------------------------
+                order = await Order.create(
+
+                    id=uuid.uuid4(),
+
+                    userid=order_data.user_id,
+
+                    productid=item.productid,
+
+                    ordered_quantity=quantity,
+
+                    totalamount=str(
+                        total_amount
+                    ),
+
+                    paymentoption=
+                    order_data.paymentoption,
+
+                    deliveryaddress=
+                    order_data.deliveryaddress,
+
+                    # safer until payment verification
+                    orderstatus=
+                    "payment_received",
+
+                    rzp_order_id=
+                    order_data.rzp_order_id,
+
+                    rzp_payment_id=
+                    order_data.rzp_payment_id
+                )
+
+                created_orders.append(
+                    order
+                )
+
+                # -------------------------
+                # REDUCE STOCK
+                # -------------------------
+                await Product.filter(
+                    id=product.id
+                ).update(
+
+                    quantity=(
+                        product.quantity
+                        -
+                        quantity
+                    )
+                )
+
+            # -------------------------
+            # CLEAR CART
+            # -------------------------
+            await Cart.filter(
+                userid=order_data.user_id
+            ).delete()
+
+        # -------------------------
+        # RESPONSE
+        # -------------------------
+        return {
+
+            "message":
+            "Order created successfully",
+
+            "user_id":
+            str(user.id),
+
+            "total_orders":
+            len(
+                created_orders
+            ),
+
+            "orders": [
+
+                {
+
+                    "order_id":
+                    str(
+                        order.id
+                    ),
+
+                    "product_id":
+                    str(
+                        order.productid
+                    ),
+
+                    "amount":
+                    order.totalamount,
+
+                    "status":
+                    order.orderstatus
+                }
+
+                for order
+                in created_orders
+            ]
+        }
+
+    except DoesNotExist:
+
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "User/Product "
+                "not found"
+            )
+        )
+
+    except IntegrityError:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Database "
+                "integrity error"
+            )
+        )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
+
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create order: {str(e)}"
+            status_code=500,
+            detail=(
+                f"Order creation failed: "
+                f"{str(e)}"
+            )
         )
+
 
 
 async def get_allorders():
@@ -353,69 +473,185 @@ async def order_history(user_id: str):
 #             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
 #             detail=f"Failed to update order status: {str(e)}"
 #         )
-
 async def order_status_update(order_status: OrderStatusSchema):
     try:
-        # Validate both orderid and orderstatus are provided
-        if not order_status.orderid or not order_status.orderstatus:
+
+        # -------------------------
+        # VALIDATE INPUT
+        # -------------------------
+        if not order_status.orderid:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Both 'orderid' and 'orderstatus' must be provided."
+                detail="orderid is required."
             )
 
-        # Fetch the order
-        order = await Order.get(id=order_status.orderid)
-        if not order:
+        if not order_status.orderstatus:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Order with ID {order_status.orderid} not found."
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="orderstatus is required."
             )
 
-        # Update status and save
-        oldstatus = order.orderstatus
-        order.orderstatus = order_status.orderstatus
+        # -------------------------
+        # STATE TRANSITION RULES
+        # -------------------------
+        ALLOWED_TRANSITIONS = {
+
+            "payment_pending": [
+                "paid",
+                "cancelled"
+            ],
+
+            "paid": [
+                "processing",
+                "refund_pending"
+            ],
+
+            "processing": [
+                "shipped",
+                "cancelled"
+
+            ],
+
+            "shipped": [
+                "delivered"
+            ],
+
+            "refund_pending": [
+                "refunded"
+            ]
+        }
+
+        # -------------------------
+        # LOAD ORDER
+        # -------------------------
+        order = await Order.get(
+            id=order_status.orderid
+        )
+
+        current_status = (
+            str(order.orderstatus).lower()
+            if order.orderstatus
+            else "payment_pending"
+        )
+
+        requested_status = (
+            str(order_status.orderstatus)
+            .lower()
+        )
+
+        # -------------------------
+        # PREVENT INVALID MOVES
+        # -------------------------
+        allowed_next = (
+            ALLOWED_TRANSITIONS
+            .get(current_status, [])
+        )
+
+        if requested_status not in allowed_next:
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Invalid status transition. "
+                    f"Cannot move "
+                    f"'{current_status}' "
+                    f"→ "
+                    f"'{requested_status}'"
+                )
+            )
+
+        # -------------------------
+        # SAVE STATUS
+        # -------------------------
+        old_status = order.orderstatus
+
+        order.orderstatus = requested_status
+
         await order.save()
 
         # -------------------------
-        # EMAIL: order status updated (NEW)
+        # SEND EMAIL
         # -------------------------
         try:
-            userdata = await User.get(id=order.userid)
-            product = await Product.get(id=order.productid)
 
-            extra_info = ""
-            # If you later represent deletions as a status like "deleted", we include it here too.
-            if str(order.orderstatus).lower() in ["canceled", "cancelled"]:
-                extra_info = "This order has been canceled."
-            elif str(order.orderstatus).lower() in ["deleted", "removed"]:
-                extra_info = "This order has been deleted/removed."
+            userdata = await User.get(
+                id=order.userid
+            )
+
+            product = await Product.get(
+                id=order.productid
+            )
 
             await send_templated_email(
                 to_email=userdata.email,
                 template_name="updatedorder",
-                username=userdata.name,
-                order_id=str(order.id),
-                new_status=str(order.orderstatus),
-                old_status = str(oldstatus),
-                product_name=product.name,
-                product_model=product.model,
-                quantity=str(order.ordered_quantity)
-            )
-        except Exception as mail_err:
-            print(f"Order status update email failed: {mail_err}")
 
-        return {"message": f"Order status updated to '{order_status.orderstatus}' successfully."}
+                username=userdata.name,
+
+                order_id=str(order.id),
+
+                old_status=str(old_status),
+
+                new_status=str(
+                    order.orderstatus
+                ),
+
+                product_name=product.name,
+
+                product_model=product.model,
+
+                quantity=str(
+                    order.ordered_quantity
+                )
+            )
+
+        except Exception as mail_err:
+
+            print(
+                "Order status email failed:",
+                str(mail_err)
+            )
+
+        return {
+            "message":
+            "Order status updated successfully",
+
+            "order_id":
+            str(order.id),
+
+            "old_status":
+            old_status,
+
+            "new_status":
+            order.orderstatus
+        }
 
     except DoesNotExist:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Order with ID {order_status.orderid} does not exist."
+            detail=(
+                f"Order "
+                f"{order_status.orderid} "
+                f"not found"
+            )
         )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
+
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update order status: {str(e)}"
+            status_code=500,
+            detail=(
+                f"Failed to update "
+                f"order status: "
+                f"{str(e)}"
+            )
         )
+
+
 
 
 # async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel: str):
@@ -492,105 +728,264 @@ async def order_status_update(order_status: OrderStatusSchema):
 #         )
 
 
-async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel: str):
+async def cancel_order(
+    order_id: str,
+    reasonforcancel: str,
+    otherreasonforcancel: str
+):
+
     try:
-        # Validate reason
-        if not reasonforcancel or reasonforcancel == "":
+
+        # -------------------------
+        # VALIDATE INPUT
+        # -------------------------
+        if not reasonforcancel:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cancellation reason must be provided."
+                status_code=400,
+                detail="Cancellation reason required."
             )
 
-        # Check if 'other' is selected and validate otherreasonforcancel
-        if reasonforcancel == "other":
-            if not otherreasonforcancel or otherreasonforcancel == "":
+        final_reason = reasonforcancel
+        custom_reason = None
+
+        if (
+            str(reasonforcancel)
+            .lower()
+            == "other"
+        ):
+
+            if not otherreasonforcancel:
+
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Please specify the cancellation reason in 'otherreasonforcancel'."
+                    status_code=400,
+                    detail=(
+                        "Please provide "
+                        "otherreasonforcancel"
+                    )
                 )
-            final_reason = "other"
-            other_reason_value = otherreasonforcancel
-        else:
-            final_reason = reasonforcancel
-            other_reason_value = None
 
-        # Fetch the order
-        order = await Order.get(id=order_id)
-        if not order:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Order with ID {order_id} not found."
+            custom_reason = (
+                otherreasonforcancel
             )
 
-        # Check if already canceled
-        if order.orderstatus == "canceled":
+        # -------------------------
+        # LOAD ORDER
+        # -------------------------
+        order = await Order.get(
+            id=order_id
+        )
+
+        current_status = (
+            str(order.orderstatus)
+            .lower()
+            if order.orderstatus
+            else "payment_pending"
+        )
+
+        # -------------------------
+        # PREVENT DUPLICATE CANCEL
+        # -------------------------
+        if current_status in [
+            "cancelled",
+            "canceled"
+        ]:
+
             return {
-                "message": f"Order {order.id} has already been canceled.",
-                "existing_cancellation_reason": order.reasonforcancel,
-                "custom_reason": order.otherreasonforcancel
+                "message":
+                "Order already cancelled",
+
+                "order_id":
+                str(order.id),
+
+                "reason":
+                order.reasonforcancel
             }
 
-        # Only allow cancellation if status is pending or null/empty
-        if order.orderstatus not in ["", "none", "null", "pending"]:
+        # -------------------------
+        # ALLOWED CANCELLATION
+        # -------------------------
+        CANCELLABLE = [
+            "payment_pending",
+            "paid",
+            "processing"
+        ]
+
+        if current_status not in CANCELLABLE:
+
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Order {order.id} cannot be canceled because its status is '{order.orderstatus}'. Only 'pending' or null status orders can be canceled."
+                status_code=400,
+                detail=(
+                    f"Order cannot "
+                    f"be cancelled "
+                    f"from status "
+                    f"'{current_status}'"
+                )
             )
 
-        # Update order status and reason
-        order.orderstatus = "canceled"
-        order.reasonforcancel = final_reason
-        order.otherreasonforcancel = other_reason_value
+        # -------------------------
+        # UPDATE ORDER
+        # -------------------------
+        order.orderstatus = (
+            "cancelled"
+        )
+
+        order.reasonforcancel = (
+            final_reason
+        )
+
+        order.otherreasonforcancel = (
+            custom_reason
+        )
+
         await order.save()
 
-        # Restock product
-        product = await Product.get(id=order.productid)
-        updated_quantity = product.quantity + int(order.ordered_quantity)
-        await Product.filter(id=order.productid).update(quantity=updated_quantity)
+        # -------------------------
+        # RESTOCK PRODUCT
+        # -------------------------
+        product = await Product.get(
+            id=order.productid
+        )
 
-        try:
-            refund_details = await initiate_refund (order_id)
-            print(f"Refund successfully initiated. Details: \n {refund_details}")
-        except Exception as refund_error:
-            print (f"Couldn't automatically process refund. Error: \n{refund_error}")
-            pass
+        await Product.filter(
+            id=order.productid
+        ).update(
+
+            quantity=(
+                product.quantity
+                +
+                int(
+                    order.ordered_quantity
+                )
+            )
+        )
 
         # -------------------------
-        # EMAIL: cancellation is also a status update (NEW)
+        # AUTO REFUND
+        # -------------------------
+        refund_result = None
+
+        if current_status in [
+            "paid",
+            "processing"
+        ]:
+
+            try:
+
+                refund_result = (
+                    await initiate_refund(
+                        order_id
+                    )
+                )
+
+                print(
+                    "Refund success:",
+                    refund_result
+                )
+
+            except Exception as e:
+
+                print(
+                    "Refund failed:",
+                    str(e)
+                )
+
+        # -------------------------
+        # EMAIL
         # -------------------------
         try:
-            userdata = await User.get(id=order.userid)
 
-            extra_info = f"Cancellation reason: {final_reason}"
-            if other_reason_value:
-                extra_info += f"\nCustom reason: {other_reason_value}"
+            user = await User.get(
+                id=order.userid
+            )
+
+            reason_text = (
+                final_reason
+            )
+
+            if custom_reason:
+
+                reason_text += (
+                    f"\n"
+                    f"{custom_reason}"
+                )
 
             await send_templated_email(
-                to_email=userdata.email,
-                template_name="canceledorder",
-                username=userdata.name,
-                order_id=str(order.id),
-                product_name=product.name,
-                product_model=product.model,
-                quantity=str(order.ordered_quantity),
-                reason=extra_info
+
+                to_email=user.email,
+
+                template_name=
+                "canceledorder",
+
+                username=user.name,
+
+                order_id=
+                str(order.id),
+
+                product_name=
+                product.name,
+
+                product_model=
+                product.model,
+
+                quantity=
+                str(
+                    order.ordered_quantity
+                ),
+
+                reason=reason_text
             )
+
         except Exception as mail_err:
-            print(f"Order cancellation email failed: {mail_err}")
+
+            print(
+                "Mail failed:",
+                str(mail_err)
+            )
 
         return {
-            "message": f"Order {order.id} canceled successfully. {order.ordered_quantity} units restocked.",
-            "cancellation_reason": final_reason,
-            "custom_reason": other_reason_value
+
+            "message":
+            "Order cancelled successfully",
+
+            "order_id":
+            str(order.id),
+
+            "status":
+            order.orderstatus,
+
+            "refund":
+            (
+                "initiated"
+                if refund_result
+                else "not_required"
+            ),
+
+            "reason":
+            final_reason,
+
+            "custom_reason":
+            custom_reason
         }
 
     except DoesNotExist:
+
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Order or product not found."
+            status_code=404,
+            detail=(
+                "Order/Product "
+                "not found"
+            )
         )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
+
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to cancel order: {str(e)}"
+            status_code=500,
+            detail=(
+                f"Cancel failed: "
+                f"{str(e)}"
+            )
         )

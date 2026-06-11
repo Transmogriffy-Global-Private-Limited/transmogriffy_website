@@ -4,6 +4,11 @@ from .Methods import order_create, order_history, order_status_update,get_allord
 from .Data_Schemas import OrderDupSchema, StandAloneUserId,OrderStatusSchema
 from pydantic import BaseModel
 from typing import Optional
+from .Data_Schemas import (
+    CheckoutSchema,
+    StandAloneUserId,
+    OrderStatusSchema
+)
 order_router = APIRouter()
 
 
@@ -14,10 +19,19 @@ class CancelOrderRequest(BaseModel):
     otherreasonforcancel: Optional[str] = None
 
 
-@order_router.post("/addorder", status_code=status.HTTP_200_OK)
-async def order_endpoint(order_data: OrderDupSchema):
-        result = await order_create({}, order_data)
-        return {"message": "Order created Successfully"}
+#@order_router.post("/addorder", status_code=status.HTTP_200_OK)
+#async def order_endpoint(order_data: OrderDupSchema):
+ #       result = await order_create({}, order_data)
+ #       return {"message": "Order created Successfully"}
+
+@order_router.post(
+    "/checkout",
+    status_code=status.HTTP_201_CREATED
+)
+async def checkout(
+    order_data: CheckoutSchema
+):
+    return await order_create({}, order_data) 
 
 @order_router.post("/orderhistory", status_code=status.HTTP_200_OK)
 async def get_order_history(request: StandAloneUserId):

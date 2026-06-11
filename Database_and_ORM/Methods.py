@@ -81,7 +81,7 @@ TORTOISE_ORM = {
 async def init_db():
     try:
         await Tortoise.init(config=TORTOISE_ORM)
-        await Tortoise.generate_schemas(safe=True)
+        #await Tortoise.generate_schemas(safe=True)
     except DBConnectionError as e:
         print("Database connection error:", e)
 
