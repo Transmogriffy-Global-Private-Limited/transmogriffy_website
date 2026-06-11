@@ -28,7 +28,8 @@ async def order_create(order_data: CheckoutSchema):
         user = await User.get(id=order_data.user_id)
 
         # Step B: Load current user cart line-items intent snapshots
-        cart_items = await Cart.filter(userid=order_data.user_id).all()
+        # ✅ FIXED: Changed filter parameter from userid to user_id
+        cart_items = await Cart.filter(user_id=order_data.user_id).all()
         if not cart_items:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -40,7 +41,8 @@ async def order_create(order_data: CheckoutSchema):
 
         # Step C: Pre-flight stock calculations and absolute financial summaries safely
         for item in cart_items:
-            product = await Product.get(id=item.productid)
+            # ✅ FIXED: Changed item.productid to item.product_id
+            product = await Product.get(id=item.product_id)
             if product.quantity < int(item.quantity):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -50,7 +52,7 @@ async def order_create(order_data: CheckoutSchema):
             line_total = float(product.price) * int(item.quantity)
             total_amount += line_total
             order_items_manifest.append({
-                "productid": item.productid,
+                "product_id": item.product_id, # ✅ FIXED: Updated dict key mapping
                 "quantity": int(item.quantity),
                 "price": line_total
             })
@@ -75,10 +77,11 @@ async def order_create(order_data: CheckoutSchema):
         async with in_transaction() as connection:
             for item in order_items_manifest:
                 # Build an open-ended tracked placeholder reference order 
+                # ✅ FIXED: Changed legacy userid/productid to user_id/product_id
                 new_order = await Order.create(
                     id=uuid.uuid4(),
-                    userid=str(user.id),
-                    productid=item["productid"],
+                    user_id=str(user.id),
+                    product_id=item["product_id"],
                     ordered_quantity=str(item["quantity"]), # Converted to str to match legacy model
                     totalamount=str(item["price"]),
                     paymentoption=order_data.paymentoption,
@@ -96,7 +99,7 @@ async def order_create(order_data: CheckoutSchema):
             "razorpay_order_id": rzp_order["id"],
             "amount_paise": rzp_order["amount"],
             "currency": rzp_order["currency"],
-            "orders": [{"order_id": str(o.id), "product_id": str(o.productid)} for o in created_orders]
+            "orders": [{"order_id": str(o.id), "product_id": str(o.product_id)} for o in created_orders] # ✅ FIXED: Attribute key mapping
         }
 
     except DoesNotExist:
@@ -135,8 +138,9 @@ async def order_status_update(order_status: OrderStatusSchema):
         await order.save()
 
         try:
-            userdata = await User.get(id=order.userid)
-            product = await Product.get(id=order.productid)
+            # ✅ FIXED: Changed reference lookups to user_id and product_id
+            userdata = await User.get(id=order.user_id)
+            product = await Product.get(id=order.product_id)
             await send_templated_email(
                 to_email=userdata.email,
                 template_name="updatedorder",
@@ -196,8 +200,9 @@ async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel
             await order.save(using_db=connection)
 
             if current_status in ["paid", "processing"]:
-                product = await Product.get(id=order.productid)
-                await Product.filter(id=order.productid).update(
+                # ✅ FIXED: Changed reference loop lookup to product_id
+                product = await Product.get(id=order.product_id)
+                await Product.filter(id=order.product_id).update(
                     quantity=product.quantity + int(order.ordered_quantity)
                 )
 
@@ -211,8 +216,9 @@ async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel
                 refund_status = "failed_manual_intervention_required"
 
         try:
-            user = await User.get(id=order.userid)
-            product = await Product.get(id=order.productid)
+            # ✅ FIXED: Changed lookup attributes to use snake_case properties
+            user = await User.get(id=order.user_id)
+            product = await Product.get(id=order.product_id)
             reason_text = f"{final_reason}\n{custom_reason}" if custom_reason else final_reason
             await send_templated_email(
                 to_email=user.email,
@@ -268,8 +274,9 @@ async def get_allorders():
 
         order_with_up = []
         for order in orders:
-            product = await Product.get(id=order.productid)
-            userdata = await User.get(id=order.userid)
+            # ✅ FIXED: Swapped out legacy attribute lookup parameters
+            product = await Product.get(id=order.product_id)
+            userdata = await User.get(id=order.user_id)
             order_refunds = refunds_by_order_id.get(str(order.id), [])
 
             order_with_up.append({
@@ -307,11 +314,13 @@ async def get_allorders():
 # -----------------------------------------------------------------------------
 async def order_history(user_id: str):
     try:
-        orders = await Order.filter(userid=user_id)
+        # ✅ FIXED: Swapped filter lookups to use user_id
+        orders = await Order.filter(user_id=user_id)
         order_history_with_products = []
 
         for order in orders:
-            product = await Product.get(id=order.productid)
+            # ✅ FIXED: Swapped structural values to use product_id
+            product = await Product.get(id=order.product_id)
             order_history_with_products.append({
                 "order_id": order.id,
                 "product_id": product.id,
@@ -327,7 +336,7 @@ async def order_history(user_id: str):
                 "order_status": order.orderstatus,
                 "deliveryaddress": order.deliveryaddress,
                 "purchase_time": order.created_at,
-                "user_id": order.userid,
+                "user_id": order.user_id, # ✅ FIXED: Aligned response mapping 
                 "rfc": order.reasonforcancel,
                 "orfc": order.otherreasonforcancel
             })

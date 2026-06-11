@@ -53,7 +53,7 @@ async def razorpayfn(payment_schema: PaymentSchema):
             product_prices[item.productid] = product.price
 
             order_notes.append({
-                "productid": item.productid,
+                "product_id": item.productid, # Aligned tracking dictionary keys
                 "quantity": item.quantity,
                 "price_per_unit": product.price,
             })
@@ -73,11 +73,11 @@ async def razorpayfn(payment_schema: PaymentSchema):
         order = razorpay_client.order.create(data=order_data)
 
         # Bulk register temporary item rows under initial pending status
-        # Note: Merged to fit your database schema structure
         for item in products:
+            # ✅ FIXED: Configured database schema arguments to match user_id / product_id foreign keys
             await Payments.create(
-                userid=userid,
-                productid=item.productid,
+                user_id=userid,
+                product_id=item.productid,
                 price=product_prices[item.productid] * item.quantity,
                 currency=order["currency"],
                 paymentid=order["id"],         # Using rzp_order_id string as lookup anchor
@@ -132,7 +132,8 @@ async def verifypayment(payload: dict, verify_payment: VerifyPaymentSchema):
             for payment in pending_payments:
                 
                 # Fetch fresh real-time database state inside transaction isolation boundary
-                product = await Product.get(id=payment.productid)
+                # ✅ FIXED: Swapped out legacy attribute referencing mapping parameters
+                product = await Product.get(id=payment.product_id)
                 if product.quantity <= 0:
                      raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -140,7 +141,7 @@ async def verifypayment(payload: dict, verify_payment: VerifyPaymentSchema):
                     )
                 
                 # Securely decrement core stock quantities directly against storage engine isolation
-                await Product.filter(id=payment.productid).update(
+                await Product.filter(id=payment.product_id).update(
                     quantity=product.quantity - 1
                 )
 
@@ -150,9 +151,10 @@ async def verifypayment(payload: dict, verify_payment: VerifyPaymentSchema):
                 await payment.save(using_db=connection)
 
                 # 4. Generate history ledger bookkeeping records
+                # ✅ FIXED: Restructured fields execution pattern to match user_id
                 await Transactions.create(
                     id=uuid.uuid4(),
-                    userid=payment.userid,
+                    user_id=payment.user_id,
                     razorpaypaymentid=verify_payment.razorpay_payment_id,
                     price=str(payment.price),
                     using_db=connection
@@ -182,16 +184,18 @@ async def transaction_history(payload: dict, management_data: TransactionsHistor
     userid = management_data.user_id
 
     try:
-        rows = await Transactions.filter(userid=userid).all()
+        # ✅ FIXED: Changed criteria filter string to map straight to user_id
+        rows = await Transactions.filter(user_id=userid).all()
         history = []
 
         for row in rows:
-            user = await User.get(id=row.userid)
+            # ✅ FIXED: Swapped legacy attribute parameters for instance tracking references
+            user = await User.get(id=row.user_id)
             history.append({
                 "id": row.id,
                 "paymentid": row.razorpaypaymentid,
                 "price": row.price,
-                "userid": row.userid,
+                "userid": row.user_id,
                 "fullname": user.name,
             })
 

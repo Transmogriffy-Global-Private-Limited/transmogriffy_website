@@ -6,8 +6,9 @@ from typing import Dict
 import logging
 
 # Initialize logger
-logger = logging.getLogger()
+logger = logging.getLogger("cart_methods")
 logger.setLevel(logging.DEBUG)
+
 
 async def add_to_cart(payload: Dict, cart_data: CartSchema):
     userid = cart_data.user_id
@@ -29,8 +30,8 @@ async def add_to_cart(payload: Dict, cart_data: CartSchema):
             detail="Product is out of stock",
         )
 
-    # Check if already in cart
-    existing = await Cart.filter(userid=userid, productid=productid).first()
+    # ✅ FIXED: Changed legacy userid/productid to user_id/product_id
+    existing = await Cart.filter(user_id=userid, product_id=productid).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -40,11 +41,12 @@ async def add_to_cart(payload: Dict, cart_data: CartSchema):
     try:
         # Decrement stock
         await Product.filter(id=productid).update(quantity=product.quantity - 1)
-        # Add to cart with quantity 1
+        
+        # ✅ FIXED: Changed schema keys to user_id and product_id for database row creation
         new_entry = await Cart.create(
             id=uuid.uuid4(),
-            userid=userid,
-            productid=productid,
+            user_id=userid,
+            product_id=productid,
             quantity=1,
             price=price,
         )
@@ -57,20 +59,23 @@ async def add_to_cart(payload: Dict, cart_data: CartSchema):
             detail=f"Failed to add to cart: {str(e)}",
         )
 
+
 async def get_cart(payload: Dict, management_data: GetCartOfauser):
     userid = management_data.user_id
     logger.debug(f"Fetching cart for user ID: {userid}")
 
     try:
-        items = await Cart.filter(userid=userid).all()
+        # ✅ FIXED: Changed filter keyword parameter to user_id
+        items = await Cart.filter(user_id=userid).all()
         if not items:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No items in cart for this user",
             )
 
+        # ✅ FIXED: Handled implicit database property access safely (i.product_id)
         cart_list = [
-            {"productid": i.productid, "quantity": i.quantity, "price": i.price}
+            {"product_id": str(i.product_id), "quantity": i.quantity, "price": float(i.price)}
             for i in items
         ]
         return {"user_id": userid, "cart_items": cart_list}
@@ -83,6 +88,7 @@ async def get_cart(payload: Dict, management_data: GetCartOfauser):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve cart: {str(e)}",
         )
+
 
 async def increase_quantity(payload: Dict, management_data: ManagementQuantity):
     userid = management_data.user_id
@@ -102,7 +108,8 @@ async def increase_quantity(payload: Dict, management_data: ManagementQuantity):
                 detail="Product is out of stock",
             )
 
-        cart_entry = await Cart.filter(userid=userid, productid=productid).first()
+        # ✅ FIXED: Changed legacy filter keys to user_id/product_id
+        cart_entry = await Cart.filter(user_id=userid, product_id=productid).first()
         if not cart_entry:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -111,7 +118,9 @@ async def increase_quantity(payload: Dict, management_data: ManagementQuantity):
 
         # Adjust stock and cart
         await Product.filter(id=productid).update(quantity=product.quantity - 1)
-        await Cart.filter(userid=userid, productid=productid).update(
+        
+        # ✅ FIXED: Changed query lookup to user_id/product_id
+        await Cart.filter(user_id=userid, product_id=productid).update(
             quantity=cart_entry.quantity + 1,
             price=float(cart_entry.price) + float(product.price)
         )
@@ -126,6 +135,7 @@ async def increase_quantity(payload: Dict, management_data: ManagementQuantity):
             detail=f"Failed to increase quantity: {str(e)}",
         )
 
+
 async def decrease_quantity(payload: Dict, management_data: ManagementQuantity):
     userid = management_data.user_id
     productid = management_data.productid
@@ -138,7 +148,8 @@ async def decrease_quantity(payload: Dict, management_data: ManagementQuantity):
         )
 
     try:
-        cart_entry = await Cart.filter(userid=userid, productid=productid).first()
+        # ✅ FIXED: Changed query parameter references
+        cart_entry = await Cart.filter(user_id=userid, product_id=productid).first()
         if not cart_entry:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -149,12 +160,14 @@ async def decrease_quantity(payload: Dict, management_data: ManagementQuantity):
 
         if cart_entry.quantity <= 1:
             # Remove entry and restock completely
-            await Cart.filter(userid=userid, productid=productid).delete()
+            # ✅ FIXED: Patched query filter criteria
+            await Cart.filter(user_id=userid, product_id=productid).delete()
             await Product.filter(id=productid).update(quantity=product.quantity + 1)
             return {"message": "Item removed from cart"}
         else:
             # Decrement cart and restock one unit
-            await Cart.filter(userid=userid, productid=productid).update(
+            # ✅ FIXED: Patched query filter criteria
+            await Cart.filter(user_id=userid, product_id=productid).update(
                 quantity=cart_entry.quantity - 1,
                 price=float(cart_entry.price) - float(product.price)
             )
@@ -169,6 +182,7 @@ async def decrease_quantity(payload: Dict, management_data: ManagementQuantity):
             detail=f"Failed to decrease quantity: {str(e)}",
         )
 
+
 async def remove_from_cart(payload: Dict, management_data: ManagementQuantity):
     userid = management_data.user_id
     productid = management_data.productid
@@ -181,7 +195,8 @@ async def remove_from_cart(payload: Dict, management_data: ManagementQuantity):
         )
 
     try:
-        cart_entry = await Cart.filter(userid=userid, productid=productid).first()
+        # ✅ FIXED: Patched legacy naming mapping criteria
+        cart_entry = await Cart.filter(user_id=userid, product_id=productid).first()
         if not cart_entry:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -189,8 +204,10 @@ async def remove_from_cart(payload: Dict, management_data: ManagementQuantity):
             )
 
         product = await Product.get(id=productid)
+        
         # Remove and restock
-        await Cart.filter(userid=userid, productid=productid).delete()
+        # ✅ FIXED: Patched query target parameters
+        await Cart.filter(user_id=userid, product_id=productid).delete()
         await Product.filter(id=productid).update(quantity=product.quantity + cart_entry.quantity)
 
         return {"message": "Product removed from cart successfully"}

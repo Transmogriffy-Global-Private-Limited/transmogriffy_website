@@ -35,13 +35,13 @@ async def payment_endpoint(
         result = await razorpayfn(payment_data)
         return result
 
-    except HTTPException:
-        raise
+    except HTTPException as he:
+        raise he
 
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=str(e),
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Payment initialization gateway breakdown: {str(e)}",
         )
 
 
@@ -56,20 +56,20 @@ async def verify_payment_endpoint(
     verify_ep: VerifyPaymentSchema,
 ):
     try:
+        # Pass payload schema capturing validated snake_case keys securely
         result = await verifypayment(
             {},
             verify_ep,
         )
-
         return result
 
-    except HTTPException:
-        raise
+    except HTTPException as he:
+        raise he
 
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=str(e),
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Cryptographic signature processing execution sequence failure: {str(e)}",
         )
 
 
@@ -88,14 +88,13 @@ async def user_transaction_history(
             {},
             th_of_u,
         )
-
         return result
 
-    except HTTPException:
-        raise
+    except HTTPException as he:
+        raise he
 
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=str(e),
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to aggregate customer accounting transaction ledgers: {str(e)}",
         )
