@@ -1,9 +1,30 @@
 import uuid
+import random
+import logging
 from typing import Dict
+
 from fastapi import HTTPException, status
-from Database_and_ORM.Database_Models import Product, BuyNow, Address, Transactions
-from .Data_Schemas import BuyNowSchema,PaymentSchema,TransactionsSchema,OrderSchema
 from razorpay import Client
+from tortoise.exceptions import DoesNotExist, IntegrityError
+
+from Database_and_ORM.Database_Models import (
+    Product,
+    BuyNow,
+    Address,
+    Transactions,
+    User,
+    Payments,
+    Order,
+)
+
+from .Data_Schemas import (
+    BuyNowSchema,
+    PaymentSchema,
+    TransactionsSchema,
+    OrderSchema,
+)
+
+logger = logging.getLogger(__name__)
 
 async def buy_now(payload: Dict, buy_now_data: BuyNowSchema):
     userid = buy_now_data.user_id
