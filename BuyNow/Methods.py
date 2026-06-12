@@ -24,7 +24,7 @@ from .Data_Schemas import (
     OrderSchema,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 async def buy_now(payload: Dict, buy_now_data: BuyNowSchema):
     userid = buy_now_data.user_id
@@ -83,7 +83,7 @@ async def buy_now(payload: Dict, buy_now_data: BuyNowSchema):
         return new_entry
 
     except Exception as e:
-        logger.error(f"Error processing Buy Now: {e}")
+        logger.exception(f"Error processing Buy Now: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process Buy Now: {str(e)}",
@@ -106,7 +106,7 @@ async def get_buy_now_transactions(user_id: str):
         return buy_now_entries
 
     except Exception as e:
-        print(f"Error fetching Buy Now transactions: {e}")
+        logger.exception(f"Error fetching Buy Now transactions: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal server error occurred while fetching Buy Now transactions."
@@ -139,7 +139,7 @@ async def razorpayfn(payment_schema:PaymentSchema):
 
         # Calculate total amount
         total_amount = product_entry.price * quantity
-        print(f"Total amount: {total_amount}")
+        logger.info(f"Total amount: {total_amount}")
 
         # Prepare Razorpay order data
         order_notes = {
@@ -157,7 +157,7 @@ async def razorpayfn(payment_schema:PaymentSchema):
 
         # Create Razorpay order
         order = razorpay_client.order.create(data=order_data)
-        print("Razorpay order created:", order)
+        logger.info(f"Razorpay order created: {order}")
 
         # Store payment details in database
         await Payments.create(
@@ -188,7 +188,7 @@ async def razorpayfn(payment_schema:PaymentSchema):
     except IntegrityError:
         raise HTTPException(status_code=400, detail="Database integrity error. Please check your data.")
     except Exception as e:
-        print(f"An error occurred in razorpayfn: {e}")
+        logger.exception(f"An error occurred in razorpayfn: {e}")
         raise HTTPException(status_code=500, detail="An internal server error occurred. Please try again later.")
 
 
@@ -214,7 +214,7 @@ async def verifypayment(payload: dict, verify_payment:TransactionsSchema):
         }
 
     except Exception as e:
-        print(f"Error in verifypayment: {e}")
+        logger.exception(f"Error in verifypayment: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error occurred: {str(e)}"

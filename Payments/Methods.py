@@ -1,4 +1,5 @@
 import uuid
+import logging
 from fastapi import HTTPException, status, File, UploadFile
 from tortoise.exceptions import DoesNotExist, IntegrityError
 import re
@@ -16,6 +17,8 @@ from Database_and_ORM.Database_Models import (
 import razorpay
 import random
 from decouple import config
+
+logger = logging.getLogger("uvicorn.error")
 
 razorpaykey = config("RAZOR_PAY_KEY")
 razorpaysecret = config("RAZOR_PAY_SECRET")
@@ -60,9 +63,9 @@ async def razorpayfn(payment_schema: PaymentSchema):
                 raise HTTPException(status_code=404, detail=f"Product {item.productid} not found")
 
             item_total = product_entry.price * item.quantity
-            print(item_total)
+            logger.info(f"Item total: {item_total}")
             total_amount += item_total
-            print(total_amount)
+            logger.info(f"Running total amount: {total_amount}")
             product_prices[item.productid] = product_entry.price
 
             order_notes.append(
@@ -81,7 +84,7 @@ async def razorpayfn(payment_schema: PaymentSchema):
         }
 
         order = razorpay_client.order.create(data=order_data)
-        print("Razorpay order created:", order)
+        logger.info(f"Razorpay order created: {order}")
 
         for item in products:
             await Payments.create(
@@ -109,7 +112,7 @@ async def razorpayfn(payment_schema: PaymentSchema):
     except IntegrityError:
         raise HTTPException(status_code=400, detail="Database integrity error. Please check your data.")
     except Exception as e:
-        print(f"An error occurred in razorpayfn: {e}")
+        logger.exception(f"An error occurred in razorpayfn: {e}")
         raise HTTPException(status_code=500, detail="An internal server error occurred. Please try again later.")
 
 
@@ -138,7 +141,7 @@ async def verifypayment(payload: dict, verify_payment: TransactionsSchema):
         }
 
     except Exception as e:
-        print(f"Error in verifypayment: {e}")
+        logger.exception(f"Error in verifypayment: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error occurred: {str(e)}"
@@ -194,6 +197,7 @@ async def transaction_history(
         return transactionshistory
 
     except Exception as e:
+        logger.exception(f"Failed to fetch transaction history: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch transaction history: {str(e)}",
