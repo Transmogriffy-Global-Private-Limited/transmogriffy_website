@@ -25,16 +25,15 @@ class CancelOrderRequest(BaseModel):
     otherreasonforcancel: Optional[str] = Field(None, description="Custom details if reasonforcancel is set to 'other'")
 
 
-@order_router.post("/checkout", status_code=status.HTTP_201_CREATED)
-async def checkout(order_data: CheckoutSchema):
+@order_router.post("/orderhistory", status_code=status.HTTP_200_OK)
+async def get_order_history(request: StandAloneUserId):
     try:
-        return await order_create(order_data)
-    except HTTPException as he:
-        raise he
+        order_history_data = await order_history(request.user_id)
+        return order_history_data
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Checkout initialization failed: {str(e)}"
+            detail=f"Failed to fetch order history: {str(e)}",
         )
 
 
@@ -64,7 +63,7 @@ async def update_order_status(status_data: OrderStatusSchema):
         )
 
 
-@order_router.get("/allorderdata", status_code=status.HTTP_200_OK)
+@order_router.get("/allorderdata",status_code = status.HTTP_200_OK)
 async def list_of_orders():
     try:
         return await get_allorders()
@@ -79,6 +78,7 @@ async def list_of_orders():
 
 @order_router.post("/cancelorder", status_code=status.HTTP_200_OK)
 async def cancel_order_endpoint(payload: CancelOrderRequest):
+    return await cancel_order(payload.order_id,payload.reasonforcancel,payload.otherreasonforcancel)
     try:
         return await cancel_order(
             order_id=payload.order_id, 

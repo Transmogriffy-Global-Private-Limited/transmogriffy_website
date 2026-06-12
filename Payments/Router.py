@@ -1,36 +1,21 @@
-# Payments/Router.py
-
+import uuid
 from fastapi import (
     APIRouter,
+    Depends,
+    Header,
     status,
     HTTPException,
 )
-
-from .Methods import (
-    razorpayfn,
-    verifypayment,
-    transaction_history,
-)
-
-from .Data_Schemas import (
-    PaymentSchema,
-    VerifyPaymentSchema,
-    TransactionsHistoryUser,
-)
+from .Methods import razorpayfn, verifypayment, transaction_history
+from .Data_Schemas import PaymentSchema, TransactionsSchema, TransactionsHistoryUser, VerifyPaymentSchema
 
 payment_router = APIRouter()
 
-
 # ----------------------------------------
-# Create Razorpay Payment Order
+# Create Payment (Initialize Razorpay Order)
 # ----------------------------------------
-@payment_router.post(
-    "/createpayment",
-    status_code=status.HTTP_200_OK,
-)
-async def payment_endpoint(
-    payment_data: PaymentSchema,
-):
+@payment_router.post("/createpayment", status_code=status.HTTP_200_OK)
+async def payment_endpoint(payment_data: PaymentSchema):
     try:
         result = await razorpayfn(payment_data)
         return result
@@ -46,7 +31,7 @@ async def payment_endpoint(
 
 
 # ----------------------------------------
-# Verify Payment (signature verification)
+# Verify Payment (Signature Verification)
 # ----------------------------------------
 @payment_router.post(
     "/verifypayment",

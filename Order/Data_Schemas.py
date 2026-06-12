@@ -1,59 +1,76 @@
 from enum import Enum
-from typing import Optional, List
-from pydantic import BaseModel
+from typing import List, Optional
+from pydantic import BaseModel, Field
 
 # -----------------------------------------------------------------------------
-# ORDER STATUS ENUM
+# CORE ORDER LIFECYCLE SCHEMAS
 # -----------------------------------------------------------------------------
-class OrderStatusEnum(str, Enum):
-    payment_pending = "payment_pending"
-    paid = "paid"
-    processing = "processing"
-    shipped = "shipped"
-    delivered = "delivered"
-    cancelled = "cancelled"
-    refund_pending = "refund_pending"
-    refunded = "refunded"
+class OrderSchema(BaseModel):
+    user_id: Optional[str] = None
+    product_id: Optional[str] = None
+    ordered_quantity: Optional[str] = None
+    totalamount: Optional[str] = None
+    deliveryaddress: Optional[str] = None
+    paymentoption: Optional[str] = None
+    orderstatus: Optional[str] = None
 
-# -----------------------------------------------------------------------------
-# CHECKOUT INTERFACES
-# -----------------------------------------------------------------------------
-class ProductItemSchema(BaseModel):
-    productid: str
-    quantity: int
+    class Config:
+        from_attributes = True
 
-class CheckoutSchema(BaseModel):
-    user_id: str
-    deliveryaddress: str
-    paymentoption: str
-    # If your front-end passes the items in the body payload explicitly, leave this line active.
-    # If the front-end ONLY sends user_id and expects the backend to pull the cart, comment this line out!
-    products: Optional[List[ProductItemSchema]] = None 
-
-# -----------------------------------------------------------------------------
-# BACKWARD COMPATIBILITY LAYERS
-# -----------------------------------------------------------------------------
-class OrderSchema(CheckoutSchema):
-    orderstatus: Optional[OrderStatusEnum] = OrderStatusEnum.payment_pending
 
 class OrderDupSchema(BaseModel):
-    user_id: str
-    deliveryaddress: str
-    paymentoption: str
-    rzp_order_id: str
-    rzp_payment_id: str
+    user_id: Optional[str] = None
+    cart_id: Optional[str] = None
+    deliveryaddress: Optional[str] = None
+    paymentoption: Optional[str] = None
+    rzp_payment_id: Optional[str] = None
+    rzp_order_id: Optional[str] = None
+    orderstatus: Optional[str] = None
 
-# -----------------------------------------------------------------------------
-# LIFECYCLE MANAGEMENT UTILITIES
-# -----------------------------------------------------------------------------
+    class Config:
+        from_attributes = True
+
+
 class OrderStatusSchema(BaseModel):
-    orderid: str
-    orderstatus: OrderStatusEnum
+    orderid: Optional[str] = None
+    orderstatus: Optional[str] = None
+
+
+class CheckoutSchema(BaseModel):
+    user_id: str = Field(..., description="The unique customer UUID reference identifier")
+    deliveryaddress: str = Field(..., description="The clear text delivery target address")
+    paymentoption: str = Field(default="razorpay", description="The engine gateway option selected")
+
 
 class StandAloneUserId(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None
 
-class CancelOrderRequest(BaseModel):
-    order_id: str
-    reasonforcancel: str
-    otherreasonforcancel: Optional[str] = None
+
+# -----------------------------------------------------------------------------
+# CORE PAYMENT & TRANSACTION LIFECYCLE SCHEMAS
+# -----------------------------------------------------------------------------
+class ProductItemSchema(BaseModel):
+    productid: str = Field(..., description="The target product inventory item UUID reference string")
+    quantity: int = Field(..., g=1, description="The integer count allocation quantity")
+
+
+class PaymentSchema(BaseModel):
+    user_id: str = Field(..., description="The core user identity reference tracking anchor token")
+    products: List[ProductItemSchema] = Field(..., description="The snapshot manifest collection list array")
+
+
+class VerifyPaymentSchema(BaseModel):
+    razorpay_order_id: str = Field(..., description="The payment intent tracking reference string")
+    razorpay_payment_id: str = Field(..., description="The success reference token string capture")
+    razorpay_signature: str = Field(..., description="The cryptographic validation check authentication value")
+
+
+class TransactionsSchema(BaseModel):
+    id: str
+    user_id: str
+    razorpaypaymentid: str
+    price: str
+
+
+class TransactionsHistoryUser(BaseModel):
+    user_id: str = Field(..., description="Target query context profile reference token")
