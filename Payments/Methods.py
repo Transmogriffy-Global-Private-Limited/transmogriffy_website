@@ -86,14 +86,40 @@ async def razorpayfn(payment_schema: PaymentSchema):
         for item in products:
             await Payments.create(
                 userid=userid,
-                productid=item.productid,
-                order_id=order["id"],
-                price=product_prices[item.productid] * item.quantity,
-                currency=order["currency"],
-                paymentid=order["id"],
-                paymentstatus=order["status"],
-                receipt=order["receipt"],
-                notes=order["notes"]
+
+                # ForeignKey
+                #productid=await Product.get(
+                #    id=item.productid
+                #),
+                productid=str(item.productid),
+
+                price=(
+                    prices[
+                        item.productid
+                    ]
+                    * item.quantity
+                ),
+
+                currency=order[
+                    "currency"
+                ],
+
+                paymentid=order[
+                    "id"
+                ],
+
+                paymentstatus=(
+                    "created"
+                ),
+
+                receipt=order[
+                    "receipt"
+                ],
+
+                # FIX → REQUIRED
+                notes=order[
+                    "notes"
+                ]
             )
 
         return {
