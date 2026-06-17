@@ -35,7 +35,17 @@ async def get_order_history(request: StandAloneUserId):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch order history: {str(e)}"
         )
-
+    
+@order_router.post(
+    "/addorder",
+    status_code=200
+)
+async def create_order(
+    payload: CheckoutSchema
+):
+    return await order_create(
+        payload
+    )
 
 @order_router.post("/statusupdate", status_code=status.HTTP_200_OK)
 async def update_order_status(status_data: OrderStatusSchema):

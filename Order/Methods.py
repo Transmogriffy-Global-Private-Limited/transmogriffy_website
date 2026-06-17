@@ -93,7 +93,7 @@ async def order_create(order_data: CheckoutSchema):
                 created_orders.append(new_order)
                 
             # Clear user cart rows cleanly on staging success
-            await Cart.filter(userid=order_data.user_id).using_db(connection).delete()
+            #await Cart.filter(userid=order_data.user_id).using_db(connection).delete()
 
         return {
             "message": "Internal checkout pending order generated successfully.",
