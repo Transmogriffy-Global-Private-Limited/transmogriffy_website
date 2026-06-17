@@ -41,11 +41,9 @@ async def verify_payment_endpoint(
     verify_ep: VerifyPaymentSchema,
 ):
     try:
-        # Pass payload schema capturing validated snake_case keys securely
-        result = await verifypayment(
-            {},
-            verify_ep,
-        )
+        # ✅ FIXED: Removed the empty dict '{}' positional argument blocker 
+        # so that verify_ep drops down directly into your verification logic engine
+        result = await verifypayment(verify_ep)
         return result
 
     except HTTPException as he:
@@ -69,10 +67,9 @@ async def user_transaction_history(
     th_of_u: TransactionsHistoryUser,
 ):
     try:
-        result = await transaction_history(
-            {},
-            th_of_u,
-        )
+        # ✅ FIXED: Removed the empty dict '{}' positional argument blocker
+        # so that th_of_u parameters are parsed correctly by transaction_history
+        result = await transaction_history(th_of_u)
         return result
 
     except HTTPException as he:

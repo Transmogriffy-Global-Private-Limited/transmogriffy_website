@@ -21,7 +21,7 @@ cart_router = APIRouter()
 async def add_to_cart_endpoint(cart_data: CartSchema):
     try:
         result = await add_to_cart({}, cart_data)
-        return {"message": "Added to cart successfully"}
+        return result
     except HTTPException as he:
         raise he
     except Exception as e:

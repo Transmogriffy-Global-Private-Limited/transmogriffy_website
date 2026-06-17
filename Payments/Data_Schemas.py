@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, UUID4, Field
+from pydantic import BaseModel, Field
 
 # -----------------------------------------------------------------------------
 # SUB-SCHEMA DEFINITION FOR INDIVIDUAL BASKET ITEMS
@@ -8,6 +8,7 @@ from pydantic import BaseModel, UUID4, Field
 class ProductItemSchema(BaseModel):
     productid: str
     quantity: int
+    price: Optional[float] = None
 
 
 class TransactionProductSchema(BaseModel):
@@ -16,7 +17,7 @@ class TransactionProductSchema(BaseModel):
 
 
 # -----------------------------------------------------------------------------
-# CORE TRANSACTION Captured DATA LAYER SCHEMAS
+# CORE TRANSACTION CAPTURED DATA LAYER SCHEMAS
 # -----------------------------------------------------------------------------
 class PaymentSchema(BaseModel):
     user_id: str
@@ -25,9 +26,18 @@ class PaymentSchema(BaseModel):
 
 
 class VerifyPaymentSchema(BaseModel):
-    razorpay_order_id: str = Field(..., description="The payment staging token target reference string")
-    razorpay_payment_id: str = Field(..., description="The finalized captured payment ID identifier token")
-    razorpay_signature: str = Field(..., description="The cryptographic payload authenticity verification signature hash")
+    # ✅ FIXED: Configured explicit validation aliases to parse incoming frontend keys cleanly
+    razorpay_payment_id: str = Field(..., validation_alias="razorpaypaymentid", description="The captured payment token reference identifier")
+    user_id: str = Field(..., validation_alias="user_id", description="The core user unique identity reference anchor token")
+    products: List[ProductItemSchema] = Field(..., description="The verified items manifest tracking list array")
+    
+    # ✅ FIXED: Configured signature and order parameters as Optional fallbacks to prevent client validation drops
+    razorpay_order_id: Optional[str] = Field(None, validation_alias="razorpay_order_id")
+    razorpay_signature: Optional[str] = Field(None, validation_alias="razorpay_signature")
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
 
 
 class TransactionsSchema(BaseModel):

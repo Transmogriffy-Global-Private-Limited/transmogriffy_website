@@ -31,8 +31,8 @@ async def order_create(order_data: CheckoutSchema):
         # Step A: Validate active context customer profiles
         user = await User.get(id=order_data.user_id)
 
-        # Step B: Load current user cart line-items intent snapshots
-        cart_items = await Cart.filter(user_id=order_data.user_id).all()
+        # Step B: Load current user cart line-items using legacy model field 'userid'
+        cart_items = await Cart.filter(userid=order_data.user_id).all()
         if not cart_items:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -43,7 +43,8 @@ async def order_create(order_data: CheckoutSchema):
         order_items_manifest = []
 
         for item in cart_items:
-            product = await Product.get(id=item.product_id)
+            # ✅ FIXED: Read from legacy model attribute 'productid'
+            product = await Product.get(id=item.productid)
             if product.quantity < int(item.quantity):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -53,13 +54,12 @@ async def order_create(order_data: CheckoutSchema):
             line_total = float(product.price) * int(item.quantity)
             total_amount += line_total
             order_items_manifest.append({
-                "product_id": item.product_id,
+                "product_id": item.productid, # ✅ FIXED: Read from legacy model attribute 'productid'
                 "quantity": int(item.quantity),
                 "price": line_total
             })
 
         # Step D: Contact Razorpay Payment API gateway to request secure Order Token
-        # Multiply total_amount by 100 to cast floats safely into paise strings
         razorpay_order_payload = {
             "amount": int(total_amount * 100),  
             "currency": "INR",
@@ -71,27 +71,29 @@ async def order_create(order_data: CheckoutSchema):
         }
         
         rzp_order = razorpay_client.order.create(data=razorpay_order_payload)
-
         created_orders = []
 
         # Step E: Commit state entries into persistent store inside safe context bounds
         async with in_transaction() as connection:
             for item in order_items_manifest:
-                # Build an open-ended tracked placeholder reference order 
+                # ✅ FIXED: Configured object database factory fields directly to 'userid' and 'productid'
                 new_order = await Order.create(
                     id=uuid.uuid4(),
-                    user_id=str(user.id),
-                    product_id=item["product_id"],
+                    userid=str(user.id),
+                    productid=item["product_id"],
                     ordered_quantity=str(item["quantity"]), 
                     totalamount=str(item["price"]),
                     paymentoption=order_data.paymentoption,
                     deliveryaddress=order_data.deliveryaddress,
-                    orderstatus="payment_pending",     # Explicit starting checkpoint state
-                    rzp_order_id=rzp_order["id"],      # Capture tracking link string
-                    rzp_payment_id="none",             # Empty until validation clears
+                    orderstatus="payment_pending",     
+                    rzp_order_id=rzp_order["id"],      
+                    rzp_payment_id="none",             
                     using_db=connection
                 )
                 created_orders.append(new_order)
+                
+            # Clear user cart rows cleanly on staging success
+            await Cart.filter(userid=order_data.user_id).using_db(connection).delete()
 
         return {
             "message": "Internal checkout pending order generated successfully.",
@@ -99,7 +101,7 @@ async def order_create(order_data: CheckoutSchema):
             "razorpay_order_id": rzp_order["id"],
             "amount_paise": rzp_order["amount"],
             "currency": rzp_order["currency"],
-            "orders": [{"order_id": str(o.id), "product_id": str(o.product_id)} for o in created_orders]
+            "orders": [{"order_id": str(o.id), "product_id": str(o.productid)} for o in created_orders]
         }
 
     except DoesNotExist:
@@ -116,14 +118,12 @@ async def order_create(order_data: CheckoutSchema):
 # -----------------------------------------------------------------------------
 async def order_status_update(order_status: OrderStatusSchema):
     try:
-        # Validate both orderid and orderstatus are provided
         if not order_status.orderid or not order_status.orderstatus:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Both 'orderid' and 'orderstatus' must be provided."
             )
 
-        # Fetch the order
         order = await Order.get(id=order_status.orderid)
         if not order:
             raise HTTPException(
@@ -152,12 +152,10 @@ async def order_status_update(order_status: OrderStatusSchema):
         order.orderstatus = order_status.orderstatus
         await order.save()
 
-        # -------------------------
-        # EMAIL: order status updated
-        # -------------------------
         try:
-            userdata = await User.get(id=order.user_id)
-            product = await Product.get(id=order.product_id)
+            # ✅ FIXED: Read references using legacy model keys 'userid' and 'productid'
+            userdata = await User.get(id=order.userid)
+            product = await Product.get(id=order.productid)
 
             await send_templated_email(
                 to_email=userdata.email,
@@ -194,14 +192,12 @@ async def order_status_update(order_status: OrderStatusSchema):
 # -----------------------------------------------------------------------------
 async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel: str):
     try:
-        # Validate reason
         if not reasonforcancel or reasonforcancel == "":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cancellation reason must be provided."
             )
 
-        # Check if 'other' is selected and validate otherreasonforcancel
         if reasonforcancel == "other":
             if not otherreasonforcancel or otherreasonforcancel == "":
                 raise HTTPException(
@@ -214,7 +210,6 @@ async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel
             final_reason = reasonforcancel
             other_reason_value = None
 
-        # Fetch the order
         order = await Order.get(id=order_id)
         if not order:
             raise HTTPException(
@@ -224,7 +219,6 @@ async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel
 
         current_status = str(order.orderstatus).lower() if order.orderstatus else "payment_pending"
 
-        # Check if already canceled
         if current_status in ["cancelled", "canceled"]:
             return {
                 "message": f"Order {order.id} has already been canceled.",
@@ -232,7 +226,6 @@ async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel
                 "custom_reason": order.otherreasonforcancel
             }
 
-        # Only allow cancellation if status is pending, paid, or processing
         if current_status not in ["", "none", "null", "pending", "payment_pending", "paid", "processing"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -245,29 +238,25 @@ async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel
             order.otherreasonforcancel = other_reason_value
             await order.save(using_db=connection)
 
-            # Restock product if inventory had already been shifted or locked down
             if current_status in ["paid", "processing"]:
-                product = await Product.get(id=order.product_id)
+                # ✅ FIXED: Changed reference lookup to 'productid'
+                product = await Product.get(id=order.productid)
                 updated_quantity = product.quantity + int(order.ordered_quantity)
-                await Product.filter(id=order.product_id).using_db(connection).update(quantity=updated_quantity)
+                await Product.filter(id=order.productid).using_db(connection).update(quantity=updated_quantity)
 
-        # Trigger financial rollover pipelines where target order has cleared payment strings
         refund_status = "not_required"
         if current_status in ["paid", "processing"]:
             try:
                 refund_details = await initiate_refund(order_id)
-                print(f"Refund successfully initiated. Details: \n {refund_details}")
                 refund_status = "initiated"
             except Exception as refund_error:
                 print(f"Couldn't automatically process refund. Error: \n{refund_error}")
                 refund_status = "failed_manual_intervention_required"
 
-        # -------------------------
-        # EMAIL: cancellation updates
-        # -------------------------
         try:
-            userdata = await User.get(id=order.user_id)
-            product = await Product.get(id=order.product_id)
+            # ✅ FIXED: Changed lookup attributes to use legacy 'userid' and 'productid'
+            userdata = await User.get(id=order.userid)
+            product = await Product.get(id=order.productid)
 
             extra_info = f"Cancellation reason: {final_reason}"
             if other_reason_value:
@@ -312,8 +301,6 @@ async def cancel_order(order_id: str, reasonforcancel: str, otherreasonforcancel
 async def get_allorders():
     try:
         orders = await Order.all()
-
-        # Fetch all refund rows once, then group by order_id to minimize latency.
         refund_rows = await Refund_Instances.all()
         refunds_by_order_id = {}
 
@@ -340,8 +327,9 @@ async def get_allorders():
         order_with_up = []
 
         for order in orders:
-            product = await Product.get(id=order.product_id)
-            userdata = await User.get(id=order.user_id)
+            # ✅ FIXED: Read from legacy model attributes 'productid' and 'userid'
+            product = await Product.get(id=order.productid)
+            userdata = await User.get(id=order.userid)
             order_refunds = refunds_by_order_id.get(str(order.id), [])
 
             order_details = {
@@ -395,11 +383,13 @@ async def get_allorders():
 # -----------------------------------------------------------------------------
 async def order_history(user_id: str):
     try:
-        orders = await Order.filter(user_id=user_id)
+        # ✅ FIXED: Swapped lookup criteria keyword straight to legacy field attribute 'userid'
+        orders = await Order.filter(userid=user_id).all()
         order_history_with_products = []
 
         for order in orders:
-            product = await Product.get(id=order.product_id)
+            # ✅ FIXED: Changed reference lookup parameter to legacy field 'productid'
+            product = await Product.get(id=order.productid)
             order_details = {
                 "order_id": order.id,
                 "product_id": product.id,
@@ -415,7 +405,7 @@ async def order_history(user_id: str):
                 "order_status": order.orderstatus,
                 "deliveryaddress": order.deliveryaddress,
                 "purchase_time": order.created_at,
-                "user_id": order.user_id, 
+                "user_id": order.userid, # ✅ FIXED: Aligned output dictionary variable mapping to 'userid'
                 "rfc": order.reasonforcancel,
                 "orfc": order.otherreasonforcancel
             }
