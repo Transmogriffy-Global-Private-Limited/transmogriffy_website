@@ -193,8 +193,7 @@ async def razorpayfn(
 # VERIFY PAYMENT
 # ==================================================
 async def verifypayment(
-    verify_payment:
-    VerifyPaymentSchema
+    verify_payment: VerifyPaymentSchema
 ):
 
     try:
@@ -219,6 +218,24 @@ async def verifypayment(
             .user_id
         )
 
+        # -------------------------
+        # Validate required fields
+        # -------------------------
+        if not order_id:
+            raise HTTPException(
+                status_code=400,
+                detail="razorpay_order_id required"
+            )
+
+        if not signature:
+            raise HTTPException(
+                status_code=400,
+                detail="razorpay_signature required"
+            )
+
+        # -------------------------
+        # Verify Razorpay Signature
+        # -------------------------
         razorpay_client.utility.verify_payment_signature(
             {
                 "razorpay_order_id":
@@ -232,22 +249,20 @@ async def verifypayment(
             }
         )
 
-        pending = (
-            await Payments.filter(
-                userid=userid,
-                paymentid=order_id,
-                paymentstatus="created",
-            )
-            .prefetch_related(
-                "productid"
-            )
-        )
+        # -------------------------
+        # Load pending payments
+        # -------------------------
+        pending = await Payments.filter(
+            userid=userid,
+            paymentid=order_id,
+            paymentstatus="created",
+        ).all()
 
         if not pending:
 
             raise HTTPException(
-                404,
-                "No pending payment"
+                status_code=404,
+                detail="No pending payment"
             )
 
         tx = []
@@ -259,40 +274,46 @@ async def verifypayment(
 
             for pay in pending:
 
-                product = (
-                    pay.productid
-                )
-
-                if not product:
+                # FIX
+                if not pay.productid:
 
                     raise HTTPException(
-                        400,
-                        "Missing product relation"
+                        status_code=400,
+                        detail=(
+                            f"Missing productid "
+                            f"for payment "
+                            f"{pay.id}"
+                        )
                     )
 
-                if (
-                    product.quantity
-                    < 1
-                ):
+                # FIX
+                product = await Product.get(
+                    id=pay.productid
+                )
+
+                if product.quantity < 1:
+
                     raise HTTPException(
-                        400,
-                        "Out of stock"
+                        status_code=400,
+                        detail="Out of stock"
                     )
 
                 await Product.filter(
-                    id=product.id
+                    id=pay.productid
                 ).using_db(
                     conn
                 ).update(
-                    quantity=
-                    product.quantity
-                    - 1
+                    quantity=(
+                        product.quantity
+                        - 1
+                    )
                 )
 
                 pay.paymentstatus = (
                     "paid"
                 )
 
+                # replace order id
                 pay.paymentid = (
                     payment_id
                 )
@@ -303,6 +324,7 @@ async def verifypayment(
 
                 t = (
                     await Transactions.create(
+
                         id=uuid.uuid4(),
 
                         userid=userid,
@@ -320,13 +342,27 @@ async def verifypayment(
                 tx.append(
                     {
                         "transaction_id":
-                        str(t.id)
+                        str(t.id),
+
+                        "productid":
+                        str(
+                            pay.productid
+                        ),
+
+                        "price":
+                        str(
+                            pay.price
+                        )
                     }
                 )
 
         return {
+
             "message":
             "Payment verified",
+
+            "order_id":
+            order_id,
 
             "payment_id":
             payment_id,
@@ -338,13 +374,26 @@ async def verifypayment(
     except HTTPException:
         raise
 
-    except Exception as e:
+    except DoesNotExist:
 
         raise HTTPException(
-            500,
+            status_code=404,
+            detail="Product not found"
+        )
+
+    except Exception as e:
+
+        logger.error(
             f"Payment verification failed: {str(e)}"
         )
 
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Payment verification "
+                f"failed: {str(e)}"
+            )
+        )
 
 # ==================================================
 # TRANSACTION HISTORY
