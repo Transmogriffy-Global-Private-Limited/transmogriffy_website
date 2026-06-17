@@ -128,9 +128,10 @@ async def razorpayfn(
                 userid=userid,
 
                 # ForeignKey
-                productid=await Product.get(
-                    id=item.productid
-                ),
+                #productid=await Product.get(
+                #    id=item.productid
+                #),
+                productid=str(item.productid),
 
                 price=(
                     prices[
