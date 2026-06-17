@@ -34,7 +34,9 @@ razorpay_client = razorpay.Client(
 # ==================================================
 # CREATE PAYMENT
 # ==================================================
-async def razorpayfn(payment_schema: PaymentSchema):
+async def razorpayfn(
+    payment_schema: PaymentSchema
+):
 
     try:
 
@@ -48,39 +50,59 @@ async def razorpayfn(payment_schema: PaymentSchema):
 
         for item in products:
 
+            if not item.productid:
+                raise HTTPException(
+                    400,
+                    "productid required"
+                )
+
             product = await Product.get(
                 id=item.productid
-            )
-
-            total_amount += (
-                product.price * item.quantity
             )
 
             prices[item.productid] = (
                 product.price
             )
 
-        order = razorpay_client.order.create(
-            {
-                "amount": int(total_amount * 100),
-                "currency": "INR",
-                "receipt": (
+            total_amount += (
+                product.price
+                * item.quantity
+            )
+
+        order = (
+            razorpay_client.order.create(
+                {
+                    "amount":
+                    int(
+                        total_amount
+                        * 100
+                    ),
+
+                    "currency":
+                    "INR",
+
+                    "receipt":
                     f"receipt_"
-                    f"{random.randint(1000,9999)}"
-                ),
-            }
+                    f"{random.randint(1000,9999)}",
+                }
+            )
         )
 
         for item in products:
 
             await Payments.create(
+
                 userid=userid,
 
-                # FIX
-                productid_id=item.productid,
+                # FIX HERE
+                productid=await Product.get(
+                    id=item.productid
+                ),
 
                 price=(
-                    prices[item.productid]
+                    prices[
+                        item.productid
+                    ]
                     * item.quantity
                 ),
 
@@ -94,16 +116,30 @@ async def razorpayfn(payment_schema: PaymentSchema):
             )
 
         return {
-            "message": "Payment initiated",
-            "order_id": order["id"],
-            "amount": total_amount,
+            "message":
+            "Payment initiated",
+
+            "order_id":
+            order["id"],
+
+            "amount":
+            total_amount,
         }
+
+    except DoesNotExist:
+
+        raise HTTPException(
+            404,
+            "User/Product not found"
+        )
 
     except Exception as e:
 
+        logger.error(str(e))
+
         raise HTTPException(
             500,
-            str(e),
+            str(e)
         )
 
 
@@ -111,7 +147,8 @@ async def razorpayfn(payment_schema: PaymentSchema):
 # VERIFY PAYMENT
 # ==================================================
 async def verifypayment(
-    verify_payment: VerifyPaymentSchema
+    verify_payment:
+    VerifyPaymentSchema
 ):
 
     try:
@@ -138,9 +175,14 @@ async def verifypayment(
 
         razorpay_client.utility.verify_payment_signature(
             {
-                "razorpay_order_id": order_id,
-                "razorpay_payment_id": payment_id,
-                "razorpay_signature": signature,
+                "razorpay_order_id":
+                order_id,
+
+                "razorpay_payment_id":
+                payment_id,
+
+                "razorpay_signature":
+                signature,
             }
         )
 
@@ -159,12 +201,15 @@ async def verifypayment(
 
             raise HTTPException(
                 404,
-                "No pending payment",
+                "No pending payment"
             )
 
         tx = []
 
-        async with in_transaction() as conn:
+        async with (
+            in_transaction()
+            as conn
+        ):
 
             for pay in pending:
 
@@ -176,16 +221,16 @@ async def verifypayment(
 
                     raise HTTPException(
                         400,
-                        "Invalid product relation",
+                        "Missing product relation"
                     )
 
                 if (
                     product.quantity
-                    <= 0
+                    < 1
                 ):
                     raise HTTPException(
                         400,
-                        "Out of stock",
+                        "Out of stock"
                     )
 
                 await Product.filter(
@@ -193,13 +238,14 @@ async def verifypayment(
                 ).using_db(
                     conn
                 ).update(
-                    quantity=(
-                        product.quantity
-                        - 1
-                    )
+                    quantity=
+                    product.quantity
+                    - 1
                 )
 
-                pay.paymentstatus = "paid"
+                pay.paymentstatus = (
+                    "paid"
+                )
 
                 pay.paymentid = (
                     payment_id
@@ -227,18 +273,20 @@ async def verifypayment(
 
                 tx.append(
                     {
-                        "transaction_id": str(
-                            t.id
-                        )
+                        "transaction_id":
+                        str(t.id)
                     }
                 )
 
         return {
-            "message": (
-                "Payment verified"
-            ),
-            "payment_id": payment_id,
-            "transactions": tx,
+            "message":
+            "Payment verified",
+
+            "payment_id":
+            payment_id,
+
+            "transactions":
+            tx,
         }
 
     except HTTPException:
@@ -248,10 +296,7 @@ async def verifypayment(
 
         raise HTTPException(
             500,
-            (
-                "Payment verification "
-                f"failed: {str(e)}"
-            ),
+            f"Payment verification failed: {str(e)}"
         )
 
 
@@ -273,7 +318,7 @@ async def transaction_history(
         )
     )
 
-    result = []
+    history = []
 
     for row in rows:
 
@@ -281,21 +326,25 @@ async def transaction_history(
             id=row.userid
         )
 
-        result.append(
-            {
-                "id": str(
-                    row.id
-                ),
+        history.append({
 
-                "paymentid":
-                row.razorpaypaymentid,
+            "id":
+            str(row.id),
 
-                "price":
-                row.price,
+            "paymentid":
+            row.razorpaypaymentid,
 
-                "fullname":
-                user.name,
-            }
-        )
+            "price":
+            row.price,
 
-    return result
+            "fullname":
+            user.name,
+        })
+
+    return {
+        "count":
+        len(history),
+
+        "transactions":
+        history,
+    }
