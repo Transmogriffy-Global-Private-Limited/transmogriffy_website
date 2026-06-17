@@ -47,13 +47,23 @@ async def razorpayfn(
 
         total_amount = 0
         prices = {}
+        order_notes = []
 
+        # -----------------------------
+        # Validate Products
+        # -----------------------------
         for item in products:
 
             if not item.productid:
                 raise HTTPException(
-                    400,
-                    "productid required"
+                    status_code=400,
+                    detail="productid required"
+                )
+
+            if item.quantity <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="quantity must be greater than 0"
                 )
 
             product = await Product.get(
@@ -69,32 +79,50 @@ async def razorpayfn(
                 * item.quantity
             )
 
+            order_notes.append({
+                "product_id": str(
+                    item.productid
+                ),
+                "quantity": item.quantity,
+                "unit_price": product.price
+            })
+
+        # -----------------------------
+        # Create Razorpay Order
+        # -----------------------------
         order = (
             razorpay_client.order.create(
                 {
-                    "amount":
-                    int(
+                    "amount": int(
                         total_amount
                         * 100
                     ),
 
-                    "currency":
-                    "INR",
+                    "currency": "INR",
 
                     "receipt":
                     f"receipt_"
                     f"{random.randint(1000,9999)}",
+
+                    # FIX → REQUIRED
+                    "notes": {
+                        "products":
+                        order_notes
+                    }
                 }
             )
         )
 
+        # -----------------------------
+        # Save Local Payment Rows
+        # -----------------------------
         for item in products:
 
             await Payments.create(
 
                 userid=userid,
 
-                # FIX HERE
+                # ForeignKey
                 productid=await Product.get(
                     id=item.productid
                 ),
@@ -106,16 +134,30 @@ async def razorpayfn(
                     * item.quantity
                 ),
 
-                currency="INR",
+                currency=order[
+                    "currency"
+                ],
 
-                paymentid=order["id"],
+                paymentid=order[
+                    "id"
+                ],
 
-                paymentstatus="created",
+                paymentstatus=(
+                    "created"
+                ),
 
-                receipt=order["receipt"],
+                receipt=order[
+                    "receipt"
+                ],
+
+                # FIX → REQUIRED
+                notes=order[
+                    "notes"
+                ]
             )
 
         return {
+
             "message":
             "Payment initiated",
 
@@ -129,19 +171,23 @@ async def razorpayfn(
     except DoesNotExist:
 
         raise HTTPException(
-            404,
-            "User/Product not found"
+            status_code=404,
+            detail="User/Product not found"
         )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
 
-        logger.error(str(e))
-
-        raise HTTPException(
-            500,
-            str(e)
+        logger.error(
+            f"Create payment failed: {str(e)}"
         )
 
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 # ==================================================
 # VERIFY PAYMENT
