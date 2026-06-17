@@ -9,7 +9,7 @@ from decouple import config
 from fastapi import HTTPException, status, File, UploadFile
 from tortoise.exceptions import DoesNotExist, IntegrityError
 from tortoise.transactions import in_transaction
-
+import logging
 # Schema and Model mappings
 from .Data_Schemas import OrderSchema, OrderDupSchema, OrderStatusSchema, CheckoutSchema
 from Database_and_ORM.Database_Models import Order, Cart, Product, User, Admin, Refund_Instances
@@ -93,7 +93,7 @@ async def order_create(order_data: CheckoutSchema):
                 created_orders.append(new_order)
                 
             # Clear user cart rows cleanly on staging success
-            #await Cart.filter(userid=order_data.user_id).using_db(connection).delete()
+            await Cart.filter(userid=order_data.user_id).using_db(connection).delete()
 
         return {
             "message": "Internal checkout pending order generated successfully.",
