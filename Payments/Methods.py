@@ -7,7 +7,12 @@ from decouple import config
 from fastapi import HTTPException, status
 from tortoise.exceptions import DoesNotExist
 from tortoise.transactions import in_transaction
+from uuid import UUID
+import uuid
 
+from fastapi import HTTPException
+from tortoise.exceptions import DoesNotExist
+from tortoise.transactions import in_transaction
 from .Data_Schemas import (
     PaymentSchema,
     TransactionsHistoryUser,
@@ -219,8 +224,15 @@ async def verifypayment(
         )
 
         # -------------------------
-        # Validate required fields
+        # Validate inputs
         # -------------------------
+
+        if not payment_id:
+            raise HTTPException(
+                status_code=400,
+                detail="razorpay_payment_id required"
+            )
+
         if not order_id:
             raise HTTPException(
                 status_code=400,
@@ -236,6 +248,7 @@ async def verifypayment(
         # -------------------------
         # Verify Razorpay Signature
         # -------------------------
+
         razorpay_client.utility.verify_payment_signature(
             {
                 "razorpay_order_id":
@@ -250,13 +263,18 @@ async def verifypayment(
         )
 
         # -------------------------
-        # Load pending payments
+        # Load pending payment rows
         # -------------------------
-        pending = await Payments.filter(
-            userid=userid,
-            paymentid=order_id,
-            paymentstatus="created",
-        ).all()
+
+        pending = await (
+            Payments
+            .filter(
+                userid=userid,
+                paymentid=order_id,
+                paymentstatus="created",
+            )
+            .all()
+        )
 
         if not pending:
 
@@ -267,53 +285,96 @@ async def verifypayment(
 
         tx = []
 
-        async with (
-            in_transaction()
-            as conn
-        ):
+        async with in_transaction() as conn:
 
             for pay in pending:
 
-                # FIX
+                # -------------------------
+                # Validate productid
+                # -------------------------
+
                 if not pay.productid:
 
                     raise HTTPException(
                         status_code=400,
                         detail=(
                             f"Missing productid "
-                            f"for payment "
-                            f"{pay.id}"
+                            f"for payment {pay.id}"
                         )
                     )
 
-                # FIX
-                product = await Product.get(
-                    id=pay.productid
+                try:
+
+                    product_uuid = UUID(
+                        str(
+                            pay.productid
+                        )
+                    )
+
+                except ValueError:
+
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            "Invalid productid "
+                            f"stored in payment: "
+                            f"{pay.productid}"
+                        )
+                    )
+
+                # -------------------------
+                # Load product
+                # -------------------------
+
+                product = (
+                    await Product
+                    .get(
+                        id=product_uuid
+                    )
+                    .using_db(conn)
                 )
+
+                # -------------------------
+                # Inventory validation
+                # -------------------------
 
                 if product.quantity < 1:
 
                     raise HTTPException(
                         status_code=400,
-                        detail="Out of stock"
+                        detail=(
+                            f"Product "
+                            f"{product.id} "
+                            f"out of stock"
+                        )
                     )
 
-                await Product.filter(
-                    id=pay.productid
-                ).using_db(
-                    conn
-                ).update(
-                    quantity=(
-                        product.quantity
-                        - 1
+                # -------------------------
+                # Deduct inventory
+                # -------------------------
+
+                await (
+                    Product
+                    .filter(
+                        id=product_uuid
+                    )
+                    .using_db(conn)
+                    .update(
+                        quantity=(
+                            product.quantity
+                            - 1
+                        )
                     )
                 )
+
+                # -------------------------
+                # Mark payment paid
+                # -------------------------
 
                 pay.paymentstatus = (
                     "paid"
                 )
 
-                # replace order id
                 pay.paymentid = (
                     payment_id
                 )
@@ -322,14 +383,26 @@ async def verifypayment(
                     using_db=conn
                 )
 
+                # -------------------------
+                # Create transaction
+                # -------------------------
+
                 t = (
                     await Transactions.create(
 
                         id=uuid.uuid4(),
 
-                        userid=userid,
+                        userid=str(
+                            userid
+                        ),
 
-                        razorpaypaymentid=payment_id,
+                        productid=str(
+                            product_uuid
+                        ),
+
+                        razorpaypaymentid=(
+                            payment_id
+                        ),
 
                         price=str(
                             pay.price
@@ -346,7 +419,7 @@ async def verifypayment(
 
                         "productid":
                         str(
-                            pay.productid
+                            product_uuid
                         ),
 
                         "price":
@@ -383,15 +456,15 @@ async def verifypayment(
 
     except Exception as e:
 
-        logger.error(
-            f"Payment verification failed: {str(e)}"
+        logger.exception(
+            "Payment verification failed"
         )
 
         raise HTTPException(
             status_code=500,
             detail=(
-                "Payment verification "
-                f"failed: {str(e)}"
+                "Payment verification failed: "
+                f"{str(e)}"
             )
         )
 
