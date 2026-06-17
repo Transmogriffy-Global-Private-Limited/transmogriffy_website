@@ -1,45 +1,56 @@
-from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
-# -----------------------------------------------------------------------------
-# SUB-SCHEMA DEFINITION FOR INDIVIDUAL BASKET ITEMS
-# -----------------------------------------------------------------------------
+
+# ----------------------------------------
+# Product Item
+# ----------------------------------------
 class ProductItemSchema(BaseModel):
     productid: str
     quantity: int
     price: Optional[float] = None
 
 
+# ----------------------------------------
+# Transaction Product
+# ----------------------------------------
 class TransactionProductSchema(BaseModel):
     productid: str
     price: float
 
 
-# -----------------------------------------------------------------------------
-# CORE TRANSACTION CAPTURED DATA LAYER SCHEMAS
-# -----------------------------------------------------------------------------
+# ----------------------------------------
+# Create Payment
+# ----------------------------------------
 class PaymentSchema(BaseModel):
     user_id: str
     products: List[ProductItemSchema]
     price: Optional[float] = None
 
 
+# ----------------------------------------
+# Verify Payment
+# ----------------------------------------
 class VerifyPaymentSchema(BaseModel):
-    # ✅ FIXED: Configured explicit validation aliases to parse incoming frontend keys cleanly
-    razorpay_payment_id: str = Field(..., validation_alias="razorpaypaymentid", description="The captured payment token reference identifier")
-    user_id: str = Field(..., validation_alias="user_id", description="The core user unique identity reference anchor token")
-    products: List[ProductItemSchema] = Field(..., description="The verified items manifest tracking list array")
-    
-    # ✅ FIXED: Configured signature and order parameters as Optional fallbacks to prevent client validation drops
-    razorpay_order_id: Optional[str] = Field(None, validation_alias="razorpay_order_id")
-    razorpay_signature: Optional[str] = Field(None, validation_alias="razorpay_signature")
+
+    razorpay_order_id: str
+
+    razorpay_payment_id: str
+
+    razorpay_signature: str
+
+    user_id: str
+
+    products: List[ProductItemSchema]
 
     class Config:
         populate_by_name = True
         from_attributes = True
 
 
+# ----------------------------------------
+# Transactions
+# ----------------------------------------
 class TransactionsSchema(BaseModel):
     user_id: str
     razorpaypaymentid: str
@@ -49,5 +60,8 @@ class TransactionsSchema(BaseModel):
         from_attributes = True
 
 
+# ----------------------------------------
+# Transaction History
+# ----------------------------------------
 class TransactionsHistoryUser(BaseModel):
-    user_id: Optional[str] = None
+    user_id: str
