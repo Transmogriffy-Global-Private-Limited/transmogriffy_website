@@ -41,9 +41,11 @@ async def verify_payment_endpoint(
     verify_ep: VerifyPaymentSchema,
 ):
     try:
-        # ✅ FIXED: Removed the empty dict '{}' positional argument blocker 
-        # so that verify_ep drops down directly into your verification logic engine
-        result = await verifypayment(verify_ep)
+        # Forward validated request body directly
+        result = await verifypayment(
+            verify_payment=verify_ep
+        )
+
         return result
 
     except HTTPException as he:
