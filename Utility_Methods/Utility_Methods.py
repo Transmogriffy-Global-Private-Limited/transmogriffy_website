@@ -1,6 +1,12 @@
-from fastapi import HTTPException, status, Header
+from fastapi import HTTPException, status, Header, Depends
 from Users.Data_Schemas import OTPTypeEnum
-from Database_and_ORM.Database_Models import Blacklisted_Tokens, AdminOTP, OTP
+from Database_and_ORM.Database_Models import (
+    Blacklisted_Tokens,
+    AdminOTP,
+    OTP,
+    Admin,
+    User,
+)
 from decouple import config
 import jwt
 import uuid
@@ -23,8 +29,21 @@ from pydantic import ValidationError, BaseModel
 async def get_token_from_authorization_header_value(
     authorization_header_value: str,
 ):
-    token = authorization_header_value.split(" ")[1]
-    return token
+    if not authorization_header_value:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Please log in",
+        )
+
+    parts = authorization_header_value.split()
+
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header. Expected: Bearer <token>",
+        )
+
+    return parts[1]
 
 
 async def decode_jwt(token):
@@ -118,6 +137,76 @@ async def verify_jwt(authorization: str = Header(None)):
         )
 
     return payload  # Return the decoded payload if the token is valid
+
+async def get_authenticated_actor(payload: dict = Depends(verify_jwt)) -> dict:
+    """
+    Resolves the JWT subject into an actual Admin/User row.
+
+    Existing JWT shape is preserved:
+        payload = {"user_id": "...", "exp": ...}
+
+    Return shape:
+        {
+            "id": "...",
+            "role": "admin" | "user",
+            "payload": payload,
+        }
+    """
+    subject_id = payload.get("user_id")
+
+    if not subject_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+
+    admin = await Admin.get_or_none(id=subject_id)
+    if admin:
+        return {
+            "id": str(admin.id),
+            "role": "admin",
+            "payload": payload,
+        }
+
+    user = await User.get_or_none(id=subject_id)
+    if user:
+        return {
+            "id": str(user.id),
+            "role": "user",
+            "payload": payload,
+        }
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Account no longer exists. Please log in again.",
+    )
+
+
+async def verify_admin_jwt(actor: dict = Depends(get_authenticated_actor)) -> dict:
+    """
+    Admin-only route dependency.
+    Uses the existing JWT system, then confirms the token belongs to an Admin row.
+    """
+    if actor["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+
+    return actor["payload"]
+
+
+async def verify_user_jwt(actor: dict = Depends(get_authenticated_actor)) -> dict:
+    """
+    User-only route dependency.
+    """
+    if actor["role"] != "user":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User access required",
+        )
+
+    return actor["payload"]
 
 
 async def generate_random_otp() -> str:
