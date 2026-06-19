@@ -19,18 +19,18 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 
-# -------------------------------------------------
+# -----------------------------------------
 # ADD TO CART
-# NO STOCK DEDUCTION HERE
-# -------------------------------------------------
+# -----------------------------------------
 async def add_to_cart(
     payload: Dict,
     cart_data: CartSchema
 ):
-    userid = cart_data.user_id
-    productid = cart_data.productid
 
     try:
+
+        userid = cart_data.user_id
+        productid = cart_data.productid
 
         product = await Product.get(
             id=productid
@@ -55,8 +55,6 @@ async def add_to_cart(
                 detail="Product already in cart"
             )
 
-        total_price = float(product.price)
-
         cart = await Cart.create(
 
             id=uuid.uuid4(),
@@ -67,12 +65,17 @@ async def add_to_cart(
 
             quantity=1,
 
-            price=total_price,
+            price=float(
+                product.price
+            )
         )
 
         return {
-            "message": "Added to cart",
-            "cart_id": str(cart.id)
+            "message":
+            "Added to cart",
+
+            "cart_id":
+            str(cart.id)
         }
 
     except HTTPException:
@@ -80,7 +83,7 @@ async def add_to_cart(
 
     except Exception as e:
 
-        logger.error(e)
+        logger.exception(e)
 
         raise HTTPException(
             status_code=500,
@@ -88,9 +91,9 @@ async def add_to_cart(
         )
 
 
-# -------------------------------------------------
+# -----------------------------------------
 # GET CART
-# -------------------------------------------------
+# -----------------------------------------
 async def get_cart(
     payload: Dict,
     management_data: GetCartOfauser
@@ -98,31 +101,34 @@ async def get_cart(
 
     try:
 
-        items = await Cart.filter(
+        carts = await Cart.filter(
             userid=management_data.user_id
         ).all()
 
-        result = []
+        output = []
 
-        for item in items:
+        for item in carts:
 
             product = await Product.get(
                 id=item.productid
             )
 
-            result.append({
+            output.append({
 
                 "productid":
                 str(item.productid),
 
-                "quantity":
+                "product_name":
+                product.name,
+
+                "available_stock":
+                product.quantity,
+
+                "cart_quantity":
                 item.quantity,
 
                 "price":
-                item.price,
-
-                "product_name":
-                product.name
+                item.price
             })
 
         return {
@@ -131,7 +137,7 @@ async def get_cart(
             management_data.user_id,
 
             "cart_items":
-            result
+            output
         }
 
     except Exception as e:
@@ -142,19 +148,19 @@ async def get_cart(
         )
 
 
-# -------------------------------------------------
+# -----------------------------------------
 # INCREASE QUANTITY
-# NO STOCK CHANGE
-# -------------------------------------------------
+# CHECK STOCK LIMIT
+# -----------------------------------------
 async def increase_quantity(
     payload: Dict,
     management_data: ManagementQuantity
 ):
 
-    userid = management_data.user_id
-    productid = management_data.productid
-
     try:
+
+        userid = management_data.user_id
+        productid = management_data.productid
 
         cart = await Cart.filter(
             userid=userid,
@@ -172,23 +178,41 @@ async def increase_quantity(
             id=productid
         )
 
-        new_quantity = cart.quantity + 1
+        if cart.quantity >= product.quantity:
+
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Only "
+                    f"{product.quantity} "
+                    f"units available"
+                )
+            )
+
+        new_qty = (
+            cart.quantity
+            + 1
+        )
 
         await Cart.filter(
             id=cart.id
         ).update(
 
-            quantity=new_quantity,
+            quantity=new_qty,
 
             price=(
                 float(product.price)
-                * new_quantity
+                * new_qty
             )
         )
 
         return {
+
             "message":
-            "Quantity increased"
+            "Quantity increased",
+
+            "quantity":
+            new_qty
         }
 
     except HTTPException:
@@ -202,48 +226,42 @@ async def increase_quantity(
         )
 
 
-# -------------------------------------------------
+# -----------------------------------------
 # DECREASE QUANTITY
-# NO STOCK CHANGE
-# -------------------------------------------------
+# -----------------------------------------
 async def decrease_quantity(
     payload: Dict,
     management_data: ManagementQuantity
 ):
 
-    userid = management_data.user_id
-    productid = management_data.productid
-
     try:
 
         cart = await Cart.filter(
-            userid=userid,
-            productid=productid
+            userid=management_data.user_id,
+            productid=management_data.productid
         ).first()
 
         if not cart:
 
             raise HTTPException(
                 status_code=404,
-                detail="Cart item not found"
+                detail="Cart not found"
             )
 
-        product = await Product.get(
-            id=productid
-        )
+        if cart.quantity == 1:
 
-        if cart.quantity <= 1:
-
-            await Cart.filter(
-                id=cart.id
-            ).delete()
+            await cart.delete()
 
             return {
                 "message":
                 "Item removed"
             }
 
-        new_quantity = (
+        product = await Product.get(
+            id=cart.productid
+        )
+
+        qty = (
             cart.quantity
             - 1
         )
@@ -252,17 +270,21 @@ async def decrease_quantity(
             id=cart.id
         ).update(
 
-            quantity=new_quantity,
+            quantity=qty,
 
             price=(
                 float(product.price)
-                * new_quantity
+                * qty
             )
         )
 
         return {
+
             "message":
-            "Quantity decreased"
+            "Quantity decreased",
+
+            "quantity":
+            qty
         }
 
     except HTTPException:
@@ -276,10 +298,9 @@ async def decrease_quantity(
         )
 
 
-# -------------------------------------------------
-# REMOVE CART ITEM
-# NO STOCK CHANGE
-# -------------------------------------------------
+# -----------------------------------------
+# REMOVE FROM CART
+# -----------------------------------------
 async def remove_from_cart(
     payload: Dict,
     management_data: ManagementQuantity
@@ -288,11 +309,14 @@ async def remove_from_cart(
     try:
 
         deleted = await Cart.filter(
+
             userid=management_data.user_id,
+
             productid=management_data.productid
+
         ).delete()
 
-        if not deleted:
+        if deleted == 0:
 
             raise HTTPException(
                 status_code=404,
@@ -300,9 +324,8 @@ async def remove_from_cart(
             )
 
         return {
-
             "message":
-            "Removed successfully"
+            "Removed from cart"
         }
 
     except HTTPException:
