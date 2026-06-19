@@ -538,7 +538,6 @@ async def get_admin_data(payload: dict) -> dict:
 
     # Remove sensitive or unnecessary fields
     admin_data.pop("password", None)
-    admin_data.pop("id", None)
 
     return admin_data
 
