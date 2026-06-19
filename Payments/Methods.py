@@ -5,6 +5,7 @@ import razorpay
 
 from decouple import config
 from fastapi import HTTPException, status
+from sympy import python
 from tortoise.exceptions import DoesNotExist
 from tortoise.transactions import in_transaction
 from uuid import UUID
@@ -17,13 +18,23 @@ from .Data_Schemas import (
     PaymentSchema,
     TransactionsHistoryUser,
     VerifyPaymentSchema,
+    
 )
 
+from fastapi import HTTPException
+from tortoise.transactions import in_transaction
+from Database_and_ORM.Database_Models import (
+    Payments,
+    Order
+)
+from datetime import datetime
+from datetime import timedelta
 from Database_and_ORM.Database_Models import (
     Payments,
     User,
     Product,
     Transactions,
+    InventoryReservation,
 )
 
 logger = logging.getLogger("Payments.Methods")
@@ -55,7 +66,7 @@ async def razorpayfn(
         order_notes = []
 
         # -----------------------------
-        # Validate Products
+        # Validate + Reserve Inventory
         # -----------------------------
         for item in products:
 
@@ -75,7 +86,67 @@ async def razorpayfn(
                 id=item.productid
             )
 
-            prices[item.productid] = (
+            # -------------------------
+            # Calculate active reserved qty
+            # -------------------------
+            reservations = (
+                await InventoryReservation
+                .filter(
+                    product_id=item.productid,
+                    converted=False,
+                    released=False,
+                    expired=False
+                )
+                .all()
+            )
+
+            reserved_qty = sum(
+                r.quantity
+                for r in reservations
+            )
+
+            available_stock = (
+                product.quantity
+                - reserved_qty
+            )
+
+            # -------------------------
+            # Validate available stock
+            # -------------------------
+            if item.quantity > available_stock:
+
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"{product.name} "
+                        f"only "
+                        f"{available_stock} "
+                        f"available"
+                    )
+                )
+
+            # -------------------------
+            # Reserve inventory
+            # -------------------------
+            await InventoryReservation.create(
+
+                user_id=userid,
+
+                product_id=item.productid,
+
+                quantity=item.quantity,
+
+                expires_at=(
+                    datetime.utcnow()
+                    + timedelta(
+                        minutes=5
+                    )
+                )
+            )
+
+            prices[
+                item.productid
+            ] = (
                 product.price
             )
 
@@ -85,31 +156,42 @@ async def razorpayfn(
             )
 
             order_notes.append({
-                "product_id": str(
+
+                "product_id":
+                str(
                     item.productid
                 ),
-                "quantity": item.quantity,
-                "unit_price": product.price
+
+                "quantity":
+                item.quantity,
+
+                "unit_price":
+                product.price
             })
 
         # -----------------------------
         # Create Razorpay Order
         # -----------------------------
         order = (
-            razorpay_client.order.create(
+            razorpay_client
+            .order
+            .create(
                 {
-                    "amount": int(
+                    "amount":
+                    int(
                         total_amount
                         * 100
                     ),
 
-                    "currency": "INR",
+                    "currency":
+                    "INR",
 
                     "receipt":
-                    f"receipt_"
-                    f"{random.randint(1000,9999)}",
+                    (
+                        f"receipt_"
+                        f"{random.randint(1000,9999)}"
+                    ),
 
-                    # FIX → REQUIRED
                     "notes": {
                         "products":
                         order_notes
@@ -119,7 +201,7 @@ async def razorpayfn(
         )
 
         # -----------------------------
-        # Save Local Payment Rows
+        # Save Payment Rows
         # -----------------------------
         for item in products:
 
@@ -127,11 +209,9 @@ async def razorpayfn(
 
                 userid=userid,
 
-                # ForeignKey
-                #productid=await Product.get(
-                #    id=item.productid
-                #),
-                productid=str(item.productid),
+                productid=str(
+                    item.productid
+                ),
 
                 price=(
                     prices[
@@ -148,15 +228,12 @@ async def razorpayfn(
                     "id"
                 ],
 
-                paymentstatus=(
-                    "created"
-                ),
+                paymentstatus="created",
 
                 receipt=order[
                     "receipt"
                 ],
 
-                # FIX → REQUIRED
                 notes=order[
                     "notes"
                 ]
@@ -165,20 +242,30 @@ async def razorpayfn(
         return {
 
             "message":
-            "Payment initiated",
+            (
+                "Payment initiated. "
+                "Inventory reserved "
+                "for 5 minutes."
+            ),
 
             "order_id":
             order["id"],
 
             "amount":
             total_amount,
+
+            "expires_in":
+            "5 minutes"
         }
 
     except DoesNotExist:
 
         raise HTTPException(
             status_code=404,
-            detail="User/Product not found"
+            detail=(
+                "User/Product "
+                "not found"
+            )
         )
 
     except HTTPException:
@@ -186,14 +273,15 @@ async def razorpayfn(
 
     except Exception as e:
 
-        logger.error(
-            f"Create payment failed: {str(e)}"
+        logger.exception(
+            "Create payment failed"
         )
 
         raise HTTPException(
             status_code=500,
             detail=str(e)
         )
+
 
 # ==================================================
 # VERIFY PAYMENT
@@ -224,30 +312,26 @@ async def verifypayment(
             .user_id
         )
 
-        # -------------------------
-        # Validate inputs
-        # -------------------------
-
         if not payment_id:
             raise HTTPException(
-                status_code=400,
-                detail="razorpay_payment_id required"
+                400,
+                "razorpay_payment_id required"
             )
 
         if not order_id:
             raise HTTPException(
-                status_code=400,
-                detail="razorpay_order_id required"
+                400,
+                "razorpay_order_id required"
             )
 
         if not signature:
             raise HTTPException(
-                status_code=400,
-                detail="razorpay_signature required"
+                400,
+                "razorpay_signature required"
             )
 
         # -------------------------
-        # Verify Razorpay Signature
+        # Verify Signature
         # -------------------------
 
         razorpay_client.utility.verify_payment_signature(
@@ -264,11 +348,11 @@ async def verifypayment(
         )
 
         # -------------------------
-        # Load pending payment rows
+        # Load Payment Rows
         # -------------------------
 
-        pending = await (
-            Payments
+        pending = (
+            await Payments
             .filter(
                 userid=userid,
                 paymentid=order_id,
@@ -280,8 +364,8 @@ async def verifypayment(
         if not pending:
 
             raise HTTPException(
-                status_code=404,
-                detail="No pending payment"
+                404,
+                "No pending payment"
             )
 
         tx = []
@@ -290,18 +374,11 @@ async def verifypayment(
 
             for pay in pending:
 
-                # -------------------------
-                # Validate productid
-                # -------------------------
-
                 if not pay.productid:
 
                     raise HTTPException(
-                        status_code=400,
-                        detail=(
-                            f"Missing productid "
-                            f"for payment {pay.id}"
-                        )
+                        400,
+                        "Missing productid"
                     )
 
                 try:
@@ -315,16 +392,65 @@ async def verifypayment(
                 except ValueError:
 
                     raise HTTPException(
-                        status_code=400,
-                        detail=(
-                            "Invalid productid "
-                            f"stored in payment: "
-                            f"{pay.productid}"
+                        400,
+                        "Invalid productid"
+                    )
+
+                # -------------------------
+                # Load Reservation
+                # -------------------------
+
+                reservation = (
+                    await InventoryReservation
+                    .filter(
+                        user_id=userid,
+                        product_id=product_uuid,
+                        converted=False,
+                        released=False,
+                        expired=False,
+                    )
+                    .using_db(conn)
+                    .first()
+                )
+
+                if not reservation:
+
+                    raise HTTPException(
+                        400,
+                        (
+                            "Reservation "
+                            "not found "
+                            "or expired"
                         )
                     )
 
                 # -------------------------
-                # Load product
+                # Expiry Check
+                # -------------------------
+
+                if (
+                    reservation.expires_at
+                    < datetime.utcnow()
+                ):
+
+                    reservation.expired = True
+
+                    reservation.released = True
+
+                    await reservation.save(
+                        using_db=conn
+                    )
+
+                    raise HTTPException(
+                        400,
+                        (
+                            "Payment timeout "
+                            "(5 min exceeded)"
+                        )
+                    )
+
+                # -------------------------
+                # Load Product
                 # -------------------------
 
                 product = (
@@ -336,22 +462,25 @@ async def verifypayment(
                 )
 
                 # -------------------------
-                # Inventory validation
+                # Final Validation
                 # -------------------------
 
-                if product.quantity < 1:
+                if (
+                    product.quantity
+                    <
+                    reservation.quantity
+                ):
 
                     raise HTTPException(
-                        status_code=400,
-                        detail=(
-                            f"Product "
-                            f"{product.id} "
-                            f"out of stock"
+                        400,
+                        (
+                            "Insufficient "
+                            "inventory"
                         )
                     )
 
                 # -------------------------
-                # Deduct inventory
+                # Deduct Stock
                 # -------------------------
 
                 await (
@@ -363,13 +492,24 @@ async def verifypayment(
                     .update(
                         quantity=(
                             product.quantity
-                            - 1
+                            -
+                            reservation.quantity
                         )
                     )
                 )
 
                 # -------------------------
-                # Mark payment paid
+                # Convert Reservation
+                # -------------------------
+
+                reservation.converted = True
+
+                await reservation.save(
+                    using_db=conn
+                )
+
+                # -------------------------
+                # Update Payment
                 # -------------------------
 
                 pay.paymentstatus = (
@@ -385,7 +525,7 @@ async def verifypayment(
                 )
 
                 # -------------------------
-                # Create transaction
+                # Transaction
                 # -------------------------
 
                 t = (
@@ -409,14 +549,16 @@ async def verifypayment(
                             pay.price
                         ),
 
-                        using_db=conn,
+                        using_db=conn
                     )
                 )
 
                 tx.append(
                     {
                         "transaction_id":
-                        str(t.id),
+                        str(
+                            t.id
+                        ),
 
                         "productid":
                         str(
@@ -433,7 +575,10 @@ async def verifypayment(
         return {
 
             "message":
-            "Payment verified",
+            (
+                "Payment verified "
+                "and stock deducted"
+            ),
 
             "order_id":
             order_id,
@@ -442,7 +587,7 @@ async def verifypayment(
             payment_id,
 
             "transactions":
-            tx,
+            tx
         }
 
     except HTTPException:
@@ -451,8 +596,8 @@ async def verifypayment(
     except DoesNotExist:
 
         raise HTTPException(
-            status_code=404,
-            detail="Product not found"
+            404,
+            "Product not found"
         )
 
     except Exception as e:
@@ -463,11 +608,13 @@ async def verifypayment(
 
         raise HTTPException(
             status_code=500,
+
             detail=(
                 "Payment verification failed: "
                 f"{str(e)}"
             )
         )
+
 
 # ==================================================
 # TRANSACTION HISTORY
@@ -517,3 +664,113 @@ async def transaction_history(
         "transactions":
         history,
     }
+
+
+
+async def payment_failed_fn(
+    order_id: str
+):
+
+    async with in_transaction() as conn:
+
+        payments = await (
+            Payments
+            .filter(
+                paymentid=order_id,
+                paymentstatus="created"
+            )
+            .using_db(conn)
+            .all()
+        )
+
+        if not payments:
+
+            raise HTTPException(
+                status_code=404,
+                detail="No pending payment found"
+            )
+
+        await (
+            Payments
+            .filter(
+                paymentid=order_id
+            )
+            .using_db(conn)
+            .update(
+                paymentstatus="failed"
+            )
+        )
+
+        await (
+            Order
+            .filter(
+                rzp_order_id=order_id
+            )
+            .using_db(conn)
+            .update(
+                orderstatus="cancelled"
+            )
+        )
+
+    return {
+
+        "message":
+        "Payment marked as failed",
+
+        "order_id":
+        order_id
+    }
+
+async def release_payment(
+    order_id
+):
+
+    rows=await Payments.filter(
+        paymentid=order_id,
+        paymentstatus="created"
+    )
+
+    for p in rows:
+
+        await (
+            InventoryReservation
+            .filter(
+                user_id=p.userid,
+                product_id=p.productid,
+                converted=False
+            )
+            .update(
+                released=True
+            )
+        )
+
+        p.paymentstatus="failed"
+
+        await p.save()
+
+    return {
+        "message":
+        "Reservation released"
+    }
+
+
+async def expire_reservations():
+
+    now=datetime.utcnow()
+
+    rows=(
+        await InventoryReservation
+        .filter(
+            expires_at__lt=now,
+            converted=False,
+            released=False
+        )
+    )
+
+    for r in rows:
+
+        r.expired=True
+
+        r.released=True
+
+        await r.save()

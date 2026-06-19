@@ -6,6 +6,7 @@ from fastapi import (
     status,
     HTTPException,
 )
+from sympy import python
 from .Methods import razorpayfn, verifypayment, transaction_history
 from .Data_Schemas import PaymentSchema, TransactionsSchema, TransactionsHistoryUser, VerifyPaymentSchema
 
@@ -82,3 +83,13 @@ async def user_transaction_history(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to aggregate customer accounting transaction ledgers: {str(e)}",
         )
+    
+@payment_router.post(
+    "/paymentfailed"
+)
+async def payment_failed(
+    order_id: str
+):
+    return {
+        "message": "ok"
+    }

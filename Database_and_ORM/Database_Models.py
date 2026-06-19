@@ -365,3 +365,37 @@ class Refund_Instances(Model):
     class Meta:
         table = "refund_instances"
         ordering = ["-created_at"]
+
+
+
+class InventoryReservation(Model):
+    id = fields.UUIDField(pk=True)
+
+    user = fields.ForeignKeyField("models.User")
+
+    product = fields.ForeignKeyField("models.Product")
+
+    quantity = fields.IntField()
+
+    expires_at = fields.DatetimeField()
+
+    converted = fields.BooleanField(default=False)
+
+    released = fields.BooleanField(default=False)
+
+    released_at = fields.DatetimeField(null=True)
+
+    expired = fields.BooleanField(default=False)
+
+    created_at = fields.DatetimeField(auto_now_add=True)
+
+    class Meta:
+        table = "inventory_reservation"
+
+        indexes = (
+            ("product",),
+            ("user",),
+            ("expires_at",),
+            ("converted",),
+            ("released",),
+        )

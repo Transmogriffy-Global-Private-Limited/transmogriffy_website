@@ -12,7 +12,8 @@ from tortoise.transactions import in_transaction
 import logging
 # Schema and Model mappings
 from .Data_Schemas import OrderSchema, OrderDupSchema, OrderStatusSchema, CheckoutSchema
-from Database_and_ORM.Database_Models import Order, Cart, Product, User, Admin, Refund_Instances
+from Database_and_ORM.Database_Models import Order, Cart, Product, User, Admin, Refund_Instances,Payments
+
 from Comms.Methods import send_templated_email
 from razorpay_refunds.methods.initiate_refund import initiate_refund
 
@@ -27,90 +28,212 @@ razorpay_client = razorpay.Client(
 # 1. CREATE INITIAL PENDING ORDER & LINK RAZORPAY INTENT
 # -----------------------------------------------------------------------------
 async def order_create(order_data: CheckoutSchema):
-    try:
-        # Step A: Validate active context customer profiles
-        user = await User.get(id=order_data.user_id)
 
-        # Step B: Load current user cart line-items using legacy model field 'userid'
-        cart_items = await Cart.filter(userid=order_data.user_id).all()
+    try:
+
+        user = await User.get(
+            id=order_data.user_id
+        )
+
+        cart_items = (
+            await Cart.filter(
+                userid=order_data.user_id
+            )
+            .all()
+        )
+
         if not cart_items:
+
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Cannot instantiate checkouts against empty digital carts."
+                status_code=404,
+                detail="Cart empty"
             )
 
-        total_amount = 0.0
-        order_items_manifest = []
+        total_amount = 0
+        manifest = []
 
-        for item in cart_items:
-            # ✅ FIXED: Read from legacy model attribute 'productid'
-            product = await Product.get(id=item.productid)
-            if product.quantity < int(item.quantity):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Inventory limit exceeded for {product.name}. Insufficient stock availability."
+        async with in_transaction() as conn:
+
+            for item in cart_items:
+
+                product = (
+                    await Product
+                    .get(
+                        id=item.productid
+                    )
+                    .using_db(conn)
                 )
-            
-            line_total = float(product.price) * int(item.quantity)
-            total_amount += line_total
-            order_items_manifest.append({
-                "product_id": item.productid, # ✅ FIXED: Read from legacy model attribute 'productid'
-                "quantity": int(item.quantity),
-                "price": line_total
-            })
 
-        # Step D: Contact Razorpay Payment API gateway to request secure Order Token
-        razorpay_order_payload = {
-            "amount": int(total_amount * 100),  
-            "currency": "INR",
-            "receipt": f"rcpt_internal_{random.randint(10000, 99999)}",
-            "notes": {
-                "user_id": str(user.id),
-                "delivery_address": order_data.deliveryaddress
-            }
-        }
-        
-        rzp_order = razorpay_client.order.create(data=razorpay_order_payload)
-        created_orders = []
-
-        # Step E: Commit state entries into persistent store inside safe context bounds
-        async with in_transaction() as connection:
-            for item in order_items_manifest:
-                # ✅ FIXED: Configured object database factory fields directly to 'userid' and 'productid'
-                new_order = await Order.create(
-                    id=uuid.uuid4(),
-                    userid=str(user.id),
-                    productid=item["product_id"],
-                    ordered_quantity=str(item["quantity"]), 
-                    totalamount=str(item["price"]),
-                    paymentoption=order_data.paymentoption,
-                    deliveryaddress=order_data.deliveryaddress,
-                    orderstatus="payment_pending",     
-                    rzp_order_id=rzp_order["id"],      
-                    rzp_payment_id="none",             
-                    using_db=connection
+                reserved = await (
+                    Payments
+                    .filter(
+                        productid=str(
+                            product.id
+                        ),
+                        paymentstatus="reserved"
+                    )
+                    .count()
                 )
-                created_orders.append(new_order)
-                
-            # Clear user cart rows cleanly on staging success
-            await Cart.filter(userid=order_data.user_id).using_db(connection).delete()
+
+                available = (
+                    product.quantity
+                    - reserved
+                )
+
+                if available < int(item.quantity):
+
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"{product.name} "
+                            "temporarily unavailable"
+                        )
+                    )
+
+                total = (
+                    float(
+                        product.price
+                    )
+                    * int(
+                        item.quantity
+                    )
+                )
+
+                total_amount += total
+
+                manifest.append(
+                    {
+                        "product_id":
+                        str(
+                            product.id
+                        ),
+
+                        "quantity":
+                        int(
+                            item.quantity
+                        ),
+
+                        "price":
+                        total
+                    }
+                )
+
+            rzp_order = (
+                razorpay_client
+                .order
+                .create(
+                    {
+                        "amount":
+                        int(
+                            total_amount
+                            * 100
+                        ),
+
+                        "currency":
+                        "INR",
+
+                        "receipt":
+                        (
+                            f"rcpt_"
+                            f"{random.randint(1000,9999)}"
+                        )
+                    }
+                )
+            )
+
+            created = []
+
+            for row in manifest:
+
+                order = (
+                    await Order.create(
+
+                        id=uuid.uuid4(),
+
+                        userid=str(
+                            user.id
+                        ),
+
+                        productid=row[
+                            "product_id"
+                        ],
+
+                        ordered_quantity=str(
+                            row[
+                                "quantity"
+                            ]
+                        ),
+
+                        totalamount=str(
+                            row[
+                                "price"
+                            ]
+                        ),
+
+                        paymentoption=(
+                            order_data
+                            .paymentoption
+                        ),
+
+                        deliveryaddress=(
+                            order_data
+                            .deliveryaddress
+                        ),
+
+                        orderstatus=(
+                            "payment_pending"
+                        ),
+
+                        rzp_order_id=(
+                            rzp_order["id"]
+                        ),
+
+                        rzp_payment_id="none",
+
+                        using_db=conn
+                    )
+                )
+
+                created.append(
+                    order
+                )
+
+            # DO NOT DELETE CART HERE
 
         return {
-            "message": "Internal checkout pending order generated successfully.",
-            "internal_orders_count": len(created_orders),
-            "razorpay_order_id": rzp_order["id"],
-            "amount_paise": rzp_order["amount"],
-            "currency": rzp_order["currency"],
-            "orders": [{"order_id": str(o.id), "product_id": str(o.productid)} for o in created_orders]
+
+            "message":
+            (
+                "Order created. "
+                "Payment valid for 5 minutes."
+            ),
+
+            "order_id":
+            rzp_order["id"],
+
+            "amount":
+            total_amount,
+
+            "expires_in_seconds":
+            300,
+
+            "orders":
+            [
+                str(x.id)
+                for x
+                in created
+            ]
         }
 
-    except DoesNotExist:
-        raise HTTPException(status_code=404, detail="Target User or Product model entry records not found.")
-    except HTTPException as he:
-        raise he
+    except HTTPException:
+        raise
+
     except Exception as e:
-        logger.error(f"Critical breakdown during transaction workflow execution initialization: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Checkout creation workflow broke down: {str(e)}")
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 
 # -----------------------------------------------------------------------------
