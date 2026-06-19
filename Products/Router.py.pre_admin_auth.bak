@@ -7,7 +7,7 @@ from fastapi import (
     Query,
     UploadFile,
 )
-from Utility_Methods.Utility_Methods import verify_jwt, verify_admin_jwt, ParsetoJSONObject
+from Utility_Methods.Utility_Methods import verify_jwt, ParsetoJSONObject
 from Products.Methods import (
     add_product,
     update_product,
@@ -43,7 +43,7 @@ delisted_product_search_engine = DelistedProductSearchEngine()
 async def add_product_endpoint(
     product_data_form: ParsetoJSONObject = Depends(),
     files: List[UploadFile] = File(None),
-    payload: dict = Depends(verify_admin_jwt),
+    payload: dict = Depends(verify_jwt),
 ):
     # ✅ Parse and validate product data with nested details
     product_data = product_data_form.as_model(AddProductSchema)
@@ -54,7 +54,7 @@ async def add_product_endpoint(
 async def update_product_endpoint(
     product_data_form: ParsetoJSONObject = Depends(),  # product_data as JSON string in form-data
     files: List[UploadFile] = File(None),  # Optional images to add
-    payload: dict = Depends(verify_admin_jwt),
+    payload: dict = Depends(verify_jwt),
 ):
     # ✅ Parse the entire product_data (including removed_images)
     product_data = product_data_form.as_model(UpdateProductSchema)
@@ -66,7 +66,7 @@ async def update_product_endpoint(
 @Products_Router.put("/toggle-listing", status_code=status.HTTP_200_OK)
 async def toggle_product_listing_endpoint(
     product_data: ToggleProductListingSchema,
-    payload: dict = Depends(verify_admin_jwt),
+    payload: dict = Depends(verify_jwt),
 ):
     """🔹 Toggles a product's listing status (Admin Only)."""
     return await toggle_product_listing(payload, product_data)
@@ -99,7 +99,7 @@ async def search_products_endpoint(search_data: SearchProductsSchema):
 
 @Products_Router.post("/admin/search-delisted", status_code=status.HTTP_200_OK)
 async def search_delisted_products_endpoint(
-    search_data: SearchProductsSchema, payload: dict = Depends(verify_admin_jwt)
+    search_data: SearchProductsSchema, payload: dict = Depends(verify_jwt)
 ):
     """🔹 Searches delisted products (Admin Only)."""
     return await delisted_product_search_engine.search_products(
@@ -112,7 +112,7 @@ async def search_delisted_products_endpoint(
 )
 async def get_delisted_products_endpoint(
     limit: str,
-    payload: dict = Depends(verify_admin_jwt),
+    payload: dict = Depends(verify_jwt),
 ):
     """🔹 Fetches all delisted products (Admin Only) with pagination support."""
     return await get_delisted_products(
@@ -157,6 +157,6 @@ async def delete_product_review_endpoint(
 )
 async def set_product_review_visibility_endpoint(
     visibility_data: ProductReviewVisibilitySchema,
-    payload: dict = Depends(verify_admin_jwt),
+    payload: dict = Depends(verify_jwt),
 ):
     return await set_product_review_visibility(payload, visibility_data)

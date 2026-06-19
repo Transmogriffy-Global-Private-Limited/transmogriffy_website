@@ -1,24 +1,24 @@
-from fastapi import APIRouter, Depends, Header, status, HTTPException, Body
-from Utility_Methods.Utility_Methods import (
-    verify_jwt,
-    verify_admin_jwt,
-    get_authenticated_actor,
-)
-from Database_and_ORM.Database_Models import Order
+from fastapi import APIRouter, Depends, status, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
 
+from Utility_Methods.Utility_Methods import (
+    get_authenticated_actor,
+    verify_admin_jwt,
+)
+from Database_and_ORM.Database_Models import Order
+
 from .Methods import (
-    order_create, 
-    order_history, 
-    order_status_update, 
-    get_allorders, 
-    cancel_order
+    order_create,
+    order_history,
+    order_status_update,
+    get_allorders,
+    cancel_order,
 )
 from .Data_Schemas import (
     CheckoutSchema,
     StandAloneUserId,
-    OrderStatusSchema
+    OrderStatusSchema,
 )
 
 order_router = APIRouter()
@@ -40,6 +40,7 @@ async def get_order_history(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cannot view another user's order history",
         )
+
     try:
         return await order_history(request.user_id)
     except HTTPException as he:
@@ -47,9 +48,14 @@ async def get_order_history(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch order history: {str(e)}"
+            detail=f"Failed to fetch order history: {str(e)}",
         )
-    
+
+
+@order_router.post(
+    "/addorder",
+    status_code=200,
+)
 async def create_order(
     payload: CheckoutSchema,
     actor: dict = Depends(get_authenticated_actor),
@@ -62,15 +68,34 @@ async def create_order(
 
     return await order_create(payload)
 
+
 @order_router.post("/statusupdate", status_code=status.HTTP_200_OK)
 async def update_order_status(
     status_data: OrderStatusSchema,
     admin_payload: dict = Depends(verify_admin_jwt),
 ):
+    try:
+        return await order_status_update(status_data)
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to execute order status mutation: {str(e)}",
+        )
 
 
 @order_router.get("/allorderdata", status_code=status.HTTP_200_OK)
 async def list_of_orders(admin_payload: dict = Depends(verify_admin_jwt)):
+    try:
+        return await get_allorders()
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve global system orders: {str(e)}",
+        )
 
 
 @order_router.post("/cancelorder", status_code=status.HTTP_200_OK)
@@ -92,8 +117,16 @@ async def cancel_order_endpoint(
             detail="Cannot cancel another user's order",
         )
 
-    return await cancel_order(
-        order_id=payload.order_id,
-        reasonforcancel=payload.reasonforcancel,
-        otherreasonforcancel=payload.otherreasonforcancel,
-    )
+    try:
+        return await cancel_order(
+            order_id=payload.order_id,
+            reasonforcancel=payload.reasonforcancel,
+            otherreasonforcancel=payload.otherreasonforcancel,
+        )
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to execute order cancellation workflow: {str(e)}",
+        )
