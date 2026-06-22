@@ -183,9 +183,9 @@ async def increase_quantity(
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    f"Only "
-                    f"{product.quantity} "
-                    f"units available"
+         #           f"Only "
+          #          f"{product.quantity} "
+                    f"Out of stock"
                 )
             )
 
