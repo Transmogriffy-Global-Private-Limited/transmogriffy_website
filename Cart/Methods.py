@@ -124,7 +124,7 @@ async def get_cart(
                 "available_stock":
                 product.quantity,
 
-                "cart_quantity":
+                "quantity":
                 item.quantity,
 
                 "price":
