@@ -30,7 +30,7 @@ async def get_product_analytics(admin_payload: dict = Depends(verify_admin_jwt))
 
 
 @analytics_router.get("/product_stock_analysis", status_code=status.HTTP_200_OK)
-async def get_product_stock_analysis():
+async def get_product_stock_analysis(admin_payload: dict = Depends(verify_admin_jwt)):
     try:
         analysis = await product_stock_analysis()
         return {"product_stock_analysis": analysis}
@@ -56,6 +56,7 @@ async def get_total_sales(admin_payload: dict = Depends(verify_admin_jwt)):
 @analytics_router.post("/user_purchase_summary", status_code=status.HTTP_200_OK)
 async def get_user_purchase_summary(
     request: UserPurchaseSummaryRequest = Body(...),
+    admin_payload: dict = Depends(verify_admin_jwt),
 ):
     try:
         summary = await user_purchase_summary(request.user_id)
@@ -70,6 +71,7 @@ async def get_user_purchase_summary(
 @analytics_router.post("/user_total_spent_and_orders", status_code=status.HTTP_200_OK)
 async def get_user_total_spent_and_orders(
     request: UserPurchaseSummaryRequest = Body(...),
+    admin_payload: dict = Depends(verify_admin_jwt),
 ):
     try:
         result = await user_total_spent_and_orders(request.user_id)
